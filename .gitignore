@@ -13,6 +13,9 @@
 **/temp
 **.db
 **.xml
+**.xlsx
+**.csv
+
 
 # next.js
 /.next/
