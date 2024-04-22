@@ -1,5 +1,6 @@
 import shutil
 import signal
+import sqlite3
 from fastapi import FastAPI, HTTPException, File, Request, UploadFile, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,7 @@ TEMP_DIR = os.path.join(BASE_DIR,'temp')
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000",'*'],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -31,6 +32,25 @@ async def add_custom_headers(request: Request, call_next):
     for key, value in response.headers.items():
         print(f"{key}: {value}")  # Log headers to the console for debugging
     return response
+
+@app.post("/change_database_directory")
+async def change_database_directory(new_directory: str):
+    global DATABASE, BASE_DIR
+    if not os.path.isdir(new_directory):
+        raise HTTPException(status_code=400, detail="Invalid directory path")
+
+    new_database_path = os.path.join(new_directory, 'HG_Sales_DB.db')
+    if not os.path.exists(new_database_path):
+        # Optionally create a new database or move/copy the old database to the new location
+        # Here we assume we're creating a new database
+        os.makedirs(new_directory, exist_ok=True)
+        with sqlite3.connect(new_database_path) as conn:
+            # Initialize your database tables here, if creating new
+            pass
+
+    DATABASE = new_database_path
+    BASE_DIR = new_directory
+    return {"message": "Database directory changed successfully", "new_path": DATABASE}   
 
 @app.get("/shutdown")
 def shutdown():
@@ -49,6 +69,32 @@ async def all_items():
     else:
         raise HTTPException(status_code=404, detail='No items found')
     
+@app.get('/items_settings')
+async def item_settings():
+    response = utils.get_item_settings(DATABASE)
+    if response['data']:
+        return JSONResponse(status_code=200, content=response)
+    else:
+        raise HTTPException(status_code=404, detail='No items found')
+    
+@app.post("/items_settings")
+async def update_item_settings(request: Request):  
+    try:
+        # Parse the JSON body manually
+        data = await request.json()
+        settings = data.get('settings')
+        print(settings)
+        if not isinstance(settings, list):
+            raise ValueError("Invalid data format: 'settings' must be a list.")
+        utils.update_item_settings(DATABASE, settings)
+        return {"message": "Settings updated successfully"}
+    except sqlite3.DatabaseError as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        [print(e)]
+        raise HTTPException(status_code=500, detail="An error occurred while updating settings.")
+
 @app.post('/get_date_range')
 async def get_date_range(start_date:str = Form(...), end_date:str=Form(...)):
     response = utils.get_items_by_date_range(DATABASE,start_date=start_date,end_date=end_date)

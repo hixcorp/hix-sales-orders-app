@@ -247,9 +247,95 @@ def update_status_by_uuid(db_filename, uuid, new_status):
 
     # Close the database connection
     conn.close()
+
+def initialize_item_settings(db_path):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    # Check if the item table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='items'")
+    if not cursor.fetchone():
+        # Table does not exist, so initialize it
+        print("item table does not exist. Initializing...")
+        raise Exception("items table does not exist")
+
+    # Create the item_settings table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS item_settings (
+            column_name TEXT PRIMARY KEY,
+            hidden BOOLEAN NOT NULL DEFAULT 0,
+            display_name TEXT
+        )
+    ''')
     
+    # Check which columns are already configured in item_settings
+    cursor.execute("SELECT column_name FROM item_settings")
+    existing_columns = set([row[0] for row in cursor.fetchall()])
+    
+    # Get columns from the items table
+    cursor.execute("PRAGMA table_info(items)")
+    item_columns = set([row[1] for row in cursor.fetchall() if row[1] not in existing_columns])
+    
+    # Insert default data for new columns from the items table
+    for column in item_columns:
+        cursor.execute("INSERT INTO item_settings (column_name, display_name) VALUES (?, ?)", (column, column))
+    
+    connection.commit()
+    connection.close()
+
+def update_item_settings(db_path, settings):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    # Check if the item_settings table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='item_settings'")
+    if not cursor.fetchone():
+        # Table does not exist, so initialize it
+        print("item_settings table does not exist. Initializing...")
+        initialize_item_settings(db_path)
+    
+    # Prepare update statement
+    update_stmt = "UPDATE item_settings SET hidden = ?, display_name = ? WHERE column_name = ?"
+    for setting in settings:
+        cursor.execute(update_stmt, (setting['hidden'], setting['display_name'], setting['column_name']))
+    
+    connection.commit()
+    connection.close()
+
+
+def get_item_settings(db_path):
+    errors = ''
+    try:
+        connection = sqlite3.connect(db_path)
+        cursor = connection.cursor()
+
+        # Check if the item_settings table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='item_settings'")
+        if not cursor.fetchone():
+            # Table does not exist, so initialize it
+            print("item_settings table does not exist. Initializing...")
+            initialize_item_settings(db_path)
+
+        # Fetching all settings from item_settings table
+        cursor.execute("SELECT column_name, hidden, display_name FROM item_settings")
+        rows = cursor.fetchall()
+
+        # Convert rows to list of dictionaries
+        settings_list = [
+            {"column_name": row[0], "hidden": bool(row[1]), "display_name": row[2]}
+            for row in rows
+        ]
+
+        connection.close()
+    except Exception as err:
+            settings_list = []
+            errors = err
+
+    return {"data":settings_list, "errors":errors}
+
+
 def get_all_items(db_filename):
-    errors = []
+    errors = ''
     try:
         # Connect to the SQLite database
         conn = sqlite3.connect(db_filename)
@@ -277,7 +363,7 @@ def get_all_items(db_filename):
     return {"schema": schema, "data": rows, "errors": errors}
 
 def get_items_by_date_range(db_filename, start_date, end_date):
-    errors = []
+    errors = ''
     try:
         # Connect to the SQLite database
         conn = sqlite3.connect(db_filename)

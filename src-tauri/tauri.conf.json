@@ -11,6 +11,9 @@
   },
   "tauri": {
     "allowlist": {
+      "window":{
+        "maximize":true
+      },
       "shell": {
         "sidecar": true,
         "scope": [
@@ -74,8 +77,10 @@
         "height": 600,
         "resizable": true,
         "title": "HIX Corporation",
-        "width": 800
+        "width": 800,
+        "maximized": true
       }
     ]
+    
   }
 }

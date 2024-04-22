@@ -15,7 +15,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Checkbox } from '@/components/ui/checkbox'
 import {toast} from '@/components/ui/use-toast';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useContext, useState } from 'react';
+import { api_url } from '@/lib/utils';
+import { SalesDataContext } from '@/app/salesdata_provider';
 
 const ACCEPTED_FILE_FORMATS = ['text/xml','.xml','.XML']
 
@@ -30,7 +32,7 @@ const formSchema = z.object({
   export_csv: z.boolean().default(true),
 });
 
-export default function FileInput(){
+export default function FileInputXML(){
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -38,19 +40,13 @@ export default function FileInput(){
         }
     })
     const [loading, setLoading] = useState(false)
+
+    const {update_sales_data} = useContext(SalesDataContext)
+
     function onSubmit (data: z.infer<typeof formSchema>) {
         console.log(data)
         setLoading(true)
-        upload_xml(data, setLoading)
-        // toast({
-        //     title: "You submitted the following values:",
-        //     description: (
-        //         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-        //         <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        //         </pre>
-        //     ),
-        //     duration: 3000
-        // })
+        upload_xml(data, setLoading).then(()=>update_sales_data())
     }
 
     const fileRef = form.register("file");
@@ -61,19 +57,22 @@ export default function FileInput(){
         >
             <div className='gap-3 py-2'>
                 <FormLabel>Upload XML File</FormLabel>
+                <p className="text-xs">Upload the generated .XML file from the daily report to generate a formatted .csv</p>
+                
                 <FormField
                     control={form.control}
                     name='file'
                     render={({ field }) => {
                         return (
-                            <FormItem className='grid grid-flow-cols items-end gap-2'>
+                        <div className="flex flex-col">
+                            <FormMessage />
+                            <FormItem className='flex items-end gap-2'>
                                 
-                                <FormControl className='flex flex-col'>
+                                <FormControl className='flex '>
                                     <Input  type="file" 
                                             placeholder="file" 
                                             {...fileRef} 
                                             onChange={(event)=>{
-                                                // console.log(event)
                                                 const d = event?.target?.files ?? {}
                                                 console.log({d})
                                                 field.onChange(d)
@@ -83,8 +82,9 @@ export default function FileInput(){
                                             />
                                 </FormControl>
                                 <Button type='submit' disabled={loading}>Submit</Button>
-                                <FormMessage />
+                                
                             </FormItem>
+                            </div>
                         );
                     }}
                 />
@@ -121,7 +121,7 @@ async function upload_xml(data: z.infer<typeof formSchema>, setLoading:Dispatch<
     formData.append("export_csv", String(data.export_csv));
 
     try {
-        const response = await fetch("http://localhost:8000/upload_xml/", {
+        const response = await fetch(`${api_url}/upload_xml/`, {
             method: 'POST',
             body: formData,
         });
