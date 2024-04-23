@@ -70,7 +70,10 @@ export default function SalesDataProvider({children}:{children:ReactNode}) {
     const get_sales_data = async () => {
         try {
             setLoading(true)
-            const new_sales_data: SalesData = await fetch(`${api_url}/all_items`).then(res => res.json())
+            const new_sales_data: SalesData = await fetch(`${api_url}/all_items`)
+                                                        .then(res => {if (res.status===200){return res.json()}
+                                                                      else if(res.status===404){setData(defaultSalesData)}
+                                                                      })
             console.log({new_sales_data})
             if (new_sales_data) {
                 setData(data => ({...data, ...new_sales_data}))

@@ -15,7 +15,7 @@
 **.xml
 **.xlsx
 **.csv
-
+**/report_data.json
 
 # next.js
 /.next/
@@ -36,6 +36,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+**/db_conn.json
+**/db_conn.py
 
 # vercel
 .vercel

@@ -10,12 +10,15 @@ import utils
 from typing import Optional
 import os
 
+global DATABASE, LOCAL_DATABASE
+
 app = FastAPI()
-DATABASE = 'HG_Sales_DB.db'
+DATABASE_NAME = 'HG_Sales_DBv1.db'
 HOST='127.0.0.1'
 PORT=8000
 BASE_DIR = utils.get_base_directory()
-DATABASE = os.path.join(BASE_DIR,DATABASE)
+DATABASE = os.path.join(BASE_DIR,DATABASE_NAME)
+LOCAL_DATABASE = os.path.join(BASE_DIR,DATABASE_NAME)
 TEMP_DIR = os.path.join(BASE_DIR,'temp')
 
 app.add_middleware(
@@ -34,23 +37,83 @@ async def add_custom_headers(request: Request, call_next):
     return response
 
 @app.post("/change_database_directory")
-async def change_database_directory(new_directory: str):
-    global DATABASE, BASE_DIR
-    if not os.path.isdir(new_directory):
-        raise HTTPException(status_code=400, detail="Invalid directory path")
+async def change_database_directory(request:Request):
+    global DATABASE
+    try:
+        # Parse the JSON body manually
+        data = await request.json()
+        new_location = data.get('new_location')
+        location_type = data.get('location_type')
 
-    new_database_path = os.path.join(new_directory, 'HG_Sales_DB.db')
-    if not os.path.exists(new_database_path):
-        # Optionally create a new database or move/copy the old database to the new location
-        # Here we assume we're creating a new database
-        os.makedirs(new_directory, exist_ok=True)
-        with sqlite3.connect(new_database_path) as conn:
-            # Initialize your database tables here, if creating new
-            pass
+        if not isinstance(new_location, str):
+            raise ValueError("Invalid data format: 'new_directory' must be a valid filepath string.")
+        if not isinstance(location_type, str):
+            raise ValueError("Invalid location type, must be a string of either 'file', 'folder', 'url'")
+        
+        match location_type:
+            case 'file':
+                if not os.path.isfile(new_location):
+                    raise HTTPException(status_code=400, detail='Invalid file path')
+                if not new_location.endswith('.db'):
+                    raise HTTPException(status_code=400, detail='Database file must have a valid .db extension')
+                new_database_path = new_location
+            case 'folder':
+                if not os.path.isdir(new_location):
+                    raise HTTPException(status_code=400, detail="Invalid database path")
+                new_database_path = os.path.join(new_location, DATABASE_NAME)
+                if not os.path.exists(new_database_path):
+                    # Optionally create a new database or move/copy the old database to the new location
+                    # Here we assume we're creating a new database
+                    os.makedirs(new_location, exist_ok=True)
+            case 'url':
+                raise ValueError('URL database types are not supported')
 
-    DATABASE = new_database_path
-    BASE_DIR = new_directory
-    return {"message": "Database directory changed successfully", "new_path": DATABASE}   
+        utils.set_preferred_database(LOCAL_DATABASE,new_database_path)
+        DATABASE = utils.load_preferred_database(LOCAL_DATABASE)
+        print(f"NEW DB: {DATABASE}")
+        return {"message": "Database directory changed successfully", "new_path": os.path.normcase(DATABASE)}
+    except HTTPException as e:
+        raise e
+    except sqlite3.DatabaseError as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        [print(e)]
+        raise HTTPException(status_code=500, detail="An error occurred while updating settings.")
+
+@app.get("/use_preferred_database")
+async def use_preferred_database():
+    global DATABASE, LOCAL_DATABASE
+    DATABASE = utils.load_preferred_database(LOCAL_DATABASE)
+    return {"path":os.path.normcase(DATABASE)}
+
+@app.get("/use_default_database")
+async def use_default_database():
+    global DATABASE, LOCAL_DATABASE
+    DATABASE = LOCAL_DATABASE
+    return {"path":os.path.normcase(DATABASE)}
+
+@app.get("/current_database")
+async def get_current_database():
+    global DATABASE
+    return {"path":os.path.normcase(DATABASE)}
+
+@app.get("/local_database")
+async def get_local_database():
+    global LOCAL_DATABASE
+    return {"path":os.path.normcase(LOCAL_DATABASE)}
+
+@app.get("/using_default_database")
+async def get_local_database():
+    global LOCAL_DATABASE, DATABASE
+    return {"using_default":os.path.normcase(LOCAL_DATABASE) == os.path.normcase(DATABASE)}
+
+@app.get("/reset_default_database")
+async def reset_default_database():
+    global DATABASE, LOCAL_DATABASE
+    utils.set_preferred_database(LOCAL_DATABASE,LOCAL_DATABASE)
+    DATABASE = utils.load_preferred_database(LOCAL_DATABASE)
+    return {"path":os.path.normcase(DATABASE)}
 
 @app.get("/shutdown")
 def shutdown():
@@ -145,6 +208,9 @@ async def update_item_status(uuid:str=Form(...), new_status:str=Form(...)):
 if __name__ == "__main__":
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
-    print(f"Database Path: {DATABASE}")
+    
     print(f"Temp Directory: {TEMP_DIR}")
+    utils.clear_temp_directory(TEMP_DIR)
+    DATABASE = utils.load_preferred_database(LOCAL_DATABASE)
+    print(f"Database Path: {DATABASE}")
     uvicorn.run(app=app,host=HOST, port=PORT)

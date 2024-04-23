@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import FileInputXML from "./file_input_xml"
 import SalesOrderData from "./sales_order_data"
 import { Suspense } from "react"
+import ChangeDatabaseDirectory from "./change_db_dir"
 
 export default function Home() {
   return (
@@ -9,16 +10,18 @@ export default function Home() {
       <>
       <header className=" h-auto bg-gray-100 dark:bg-gray-800 p-4 md:p-6 flex items-center justify-between">
         <FileInputXML/>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-center gap-4">
            <Button size="sm" variant="outline">
             <UploadIcon className="h-5 w-5 mr-2" />
             Upload Initial .xlsx
           </Button>
+          
         </div>
       </header>
         <Suspense fallback={"Loading..."}>
             <SalesOrderData />
         </Suspense>
+        <ChangeDatabaseDirectory button_label="Change Database Location"/>
     </>    
 
   )

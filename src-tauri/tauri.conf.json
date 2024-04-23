@@ -11,6 +11,8 @@
   },
   "tauri": {
     "allowlist": {
+      "path": {"all":true},
+      "dialog": {"open":true},
       "window":{
         "maximize":true
       },

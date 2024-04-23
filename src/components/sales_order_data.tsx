@@ -8,6 +8,8 @@ import { CheckedState } from '@radix-ui/react-checkbox';
 
 const SalesOrderData: React.FC = () => {
     const [editing, setEditing] = useState(false);
+    const [itemView, setOrderView] = useState(true); 
+
     const {
         sales_data,
         settings,
@@ -59,8 +61,8 @@ const SalesOrderData: React.FC = () => {
                     <span className='flex'>Orders Past Due: <div className='px-2 text-blue-600'>{orders_past_due.length}</div></span>
                 </div>
                 <div className='flex gap-1'>
-                    <div className='bg-red-300 p-1 m-0 rounded-md text-sm font-bold'>Past Due</div>
-                    <div className='bg-yellow-300 p-1 m-0 rounded-md text-sm font-bold'>Due This Week</div>
+                    {/* <div className='bg-red-300 p-1 m-/ m-0 rounded-md text-sm font-bold'>Due This Week</div> */}
+                    <Button className='m-0 h-8' onClick={() => setOrderView(!itemView)}>{itemView ? 'Switch to Order View' : 'Switch to Item View'}</Button>
                 </div>
                 <div>
                     {editing && <Button onClick={handleCancelEdit} className='m-0 h-8'>Cancel</Button>}
@@ -69,7 +71,7 @@ const SalesOrderData: React.FC = () => {
             </div>
             <div className='border overflow-auto'>
             <Table className='text-[9px] p-[0px] m-[0px] text-left align-left'>
-                <TableRender editing={editing} sales_data={sales_data} settings={settings} orders_due_this_week={orders_due_this_week} orders_past_due={orders_past_due}/>
+                <TableRender item_view={itemView} editing={editing} sales_data={sales_data} settings={settings} orders_due_this_week={orders_due_this_week} orders_past_due={orders_past_due}/>
             </Table>
             </div>
         </>
@@ -78,7 +80,7 @@ const SalesOrderData: React.FC = () => {
 
 export default SalesOrderData;
 
-function TableRender({ editing, sales_data, settings, orders_due_this_week, orders_past_due }: { editing: boolean, sales_data: SalesData, settings: SalesSettings, orders_due_this_week: string[], orders_past_due: string[] }) {
+function TableRender({ item_view, editing, sales_data, settings, orders_due_this_week, orders_past_due }: { item_view: boolean, editing: boolean, sales_data: SalesData, settings: SalesSettings, orders_due_this_week: string[], orders_past_due: string[] }) {
     const ordno = sales_data.schema.findIndex(item => item ==='ordno1')  
     let current_order = ''
     let bg = false
@@ -89,7 +91,7 @@ function TableRender({ editing, sales_data, settings, orders_due_this_week, orde
                     {sales_data.schema.map((s, i) => {
                         const s_settings = settings.data.find(item => item.column_name === s);
                         return !editing && s_settings?.hidden ? null : (
-                            <TableHead key={`header_${i}`} className='sticky top-0 text-left align-left px-1 bg-secondary w-min max-w-[10ch]'>
+                            <TableHead key={`header_${i}`} className='sticky top-0 text-left align-left px-1 bg-secondary w-min max-w-[15ch]'>
                                 {s_settings?.display_name || s}
                             </TableHead>
                         );
@@ -101,6 +103,89 @@ function TableRender({ editing, sales_data, settings, orders_due_this_week, orde
                 {editing && <EditSalesSettings />}
             </TableHeader>
             <TableBody>
+            {item_view ? <ItemView editing={editing} sales_data={sales_data} settings={settings} orders_due_this_week={orders_due_this_week} orders_past_due={orders_past_due}/> 
+                       : <OrderView editing={editing} sales_data={sales_data} settings={settings} orders_due_this_week={orders_due_this_week} orders_past_due={orders_past_due}/> 
+            }
+            </TableBody>
+        </>
+    );
+}
+
+function OrderView({ editing, sales_data, settings, orders_due_this_week, orders_past_due }: { editing: boolean, sales_data: SalesData, settings: SalesSettings, orders_due_this_week: string[], orders_past_due: string[] }) {
+  const ordnoIndex = sales_data.schema.findIndex(item => item === 'ordno1');
+  
+  // Group data by order number
+  const groupedData = sales_data.data.reduce((acc:any, row) => {
+                      const ordno = row[ordnoIndex] as string;
+                      if (!acc[ordno]) {
+                        acc[ordno] = [];
+                      }
+                      acc[ordno].push(row);
+                      return acc;
+                    }, {});
+  // Return grouped rows as collapsible components
+    return Object.keys(groupedData).map(ordno => {
+      let current_order = ''
+      let bg = false
+      const due_this_week = orders_due_this_week.includes(ordno) ? <div className='bg-yellow-300 p-1 m-0 rounded-md text-[9px] font-bold text-primary'>Due This Week</div> : ""
+      const late = orders_past_due.includes(ordno) ? <div className='bg-red-300 p-1 m-0 rounded-md text-[9px] font-bold text-primary'>Past Due</div> : ""
+                    
+      if (ordno !== current_order) {
+        current_order =ordno
+        bg = !bg
+      }
+      return <CollapsibleGroup key={ordno} groupData={groupedData[ordno]} ordno={ordno} editing={editing} sales_data={sales_data} settings={settings} due_this_week={due_this_week} late={late}/>
+  });
+}
+
+const CollapsibleGroup = ({ groupData, ordno, editing, sales_data, settings, due_this_week, late }:{groupData:any, ordno:string, editing:boolean, sales_data: SalesData, settings: SalesSettings,due_this_week: React.ReactNode, late: React.ReactNode}) => {
+  const [collapsed, setCollapsed] = useState(true);
+  const order_fields = ['GroupNamereqshipdtweekly1','ordno1', 'shiptoname1','HoldStatus1']
+ 
+  return (
+    <>
+      <TableRow onClick={() => setCollapsed(!collapsed)} className={collapsed ? 'bg-secondary hover:text-primary' : 'bg-primary text-white hover:text-white hover:bg-primary'}>
+        {/* <TableCell>{ordno} - Click to {collapsed ? 'expand' : 'collapse'}</TableCell> */}
+        {groupData[0].map((c:string, j: number)=>{
+                
+                const s_settings = settings.data.find(item => item.column_name === sales_data.schema[j])
+                return !editing && s_settings?.hidden ? null : (
+                    <TableCell key={`data_cell_${j}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
+                        {order_fields.includes(String(s_settings?.column_name)) ? c : ''}
+                    </TableCell>
+                );
+        })}
+        <TableCell className='flex p-0 m-0 text-left pl-2 '>
+            {due_this_week}
+            {late}
+          </TableCell>
+      </TableRow>
+      {!collapsed && groupData.map((row:string[], index:number) => (
+        <TableRow key={`group_row_${index}`}>
+          {
+            row.map((c, j) => {
+                const s_settings = settings.data.find(item => item.column_name === sales_data.schema[j]);
+                return !editing && s_settings?.hidden ? null : (
+                    <TableCell key={`data_cell_${j}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
+                        {/* {c} */}
+                        {order_fields.includes(String(s_settings?.column_name)) ? '' : c}
+                    </TableCell>
+                );
+            })
+          }
+        </TableRow>
+      ))}
+    </>
+  );
+};
+
+
+function ItemView({ editing, sales_data, settings, orders_due_this_week, orders_past_due }: { editing: boolean, sales_data: SalesData, settings: SalesSettings, orders_due_this_week: string[], orders_past_due: string[] }) {
+    const ordno = sales_data.schema.findIndex(item => item ==='ordno1')  
+    let current_order = ''
+    let bg = false
+    return (
+            <>
                 {sales_data.data.map((r, i) => {
                     const due_this_week = orders_due_this_week.includes(r[ordno as number]) ? <div className='bg-yellow-300 p-1 m-0 rounded-md text-[9px] font-bold'>Due This Week</div> : ""
                     const late = orders_past_due.includes(r[ordno as number]) ? <div className='bg-red-300 p-1 m-0 rounded-md text-[9px] font-bold'>Past Due</div> : ""
@@ -114,7 +199,7 @@ function TableRender({ editing, sales_data, settings, orders_due_this_week, orde
                         r.map((c, j) => {
                             const s_settings = settings.data.find(item => item.column_name === sales_data.schema[j]);
                             return !editing && s_settings?.hidden ? null : (
-                                <TableCell key={`data_cell_${j}`} className='p-0 m-0 text-left pl-2 w-min max-w-[10ch]'>
+                                <TableCell key={`data_cell_${j}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
                                     {c}
                                 </TableCell>
                             );
@@ -126,11 +211,9 @@ function TableRender({ editing, sales_data, settings, orders_due_this_week, orde
                         </TableCell>
                     </TableRow>
                 })}
-            </TableBody>
-        </>
+            </>
     );
 }
-
 
 export const EditSalesSettings = () => {
 

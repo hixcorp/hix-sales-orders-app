@@ -129,3 +129,10 @@ async fn shutdown_python_server() {
         Err(e) => println!("Failed to get PID: {}", e)
     };
 }
+
+// #[tauri::command]
+// fn select_directory(window: tauri::Window) -> Result<String, String> {
+//     tauri::api::dialog::blocking::open_directory(&window, None, None)
+//         .map(|path| path.to_string_lossy().into_owned())
+//         .map_err(|_| "Failed to open directory".to_string())
+// }

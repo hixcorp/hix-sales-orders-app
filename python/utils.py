@@ -151,23 +151,48 @@ def add_status_column(df: pl.DataFrame) -> pl.DataFrame:
     
     return df
 
+def add_user_input_columns(df: pl.DataFrame) -> pl.DataFrame:
+    default = ["" for _ in range(df.height)]
+    df = df.with_columns([
+        pl.Series("additional_info",default),
+        pl.Series("action",default),
+        pl.Series("action_owner",default)
+        ])
+    
+    return df
+
 def store_to_sqlite(df: pl.DataFrame, db_filename):
     df = add_uuid_column(df=df)
+    df = add_user_input_columns(df=df)
     conn = sqlite3.connect(database=db_filename)
     cursor = conn.cursor()
 
-    #Dynamically create the items tables
+    # Dynamically create the items tables
     columns = df.columns
-    column_types = ['TEXT' if isinstance(dtype, pl.String) or  isinstance(dtype, pl.Datetime) else 'REAL' for dtype in df.dtypes]
-    items_table_cols = ', '.join(f'"{col}" {col_type}' for col, col_type in zip(columns,column_types))
+    column_types = ['TEXT' if isinstance(dtype, (pl.String, pl.Datetime)) else 'REAL' for dtype in df.dtypes]
+    items_table_cols = ', '.join(f'"{col}" {col_type}' for col, col_type in zip(columns, column_types))
     items_table_sql = f'CREATE TABLE IF NOT EXISTS items ({items_table_cols})'
     cursor.execute(items_table_sql)
 
-    #Dynamically create the 'archive' table if it does not exist. 
-    # It has all the columns from items plus an 'archived_timestamp"
+    # Dynamically adjust the existing table to match new columns
+    cursor.execute("PRAGMA table_info(items)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+    new_columns = set(columns) - existing_columns
+    for col, col_type in zip(columns, column_types):
+        if col in new_columns:
+            cursor.execute(f"ALTER TABLE items ADD COLUMN \"{col}\" {col_type}")
+
+    # Dynamically create and adjust the 'archive' table
     archive_columns_sql = f'{items_table_cols}, "archived_timestamp" TEXT'
     archive_table_sql = f'CREATE TABLE IF NOT EXISTS archive ({archive_columns_sql})'
     cursor.execute(archive_table_sql)
+
+    cursor.execute("PRAGMA table_info(archive)")
+    existing_archive_columns = {row[1] for row in cursor.fetchall()}
+    new_archive_columns = set(columns + ['archived_timestamp']) - existing_archive_columns
+    for col, col_type in zip(columns + ['archived_timestamp'], column_types + ['TEXT']):
+        if col in new_archive_columns:
+            cursor.execute(f"ALTER TABLE archive ADD COLUMN \"{col}\" {col_type}")
 
     try:
         clear_old_archived_data(db_filename=db_filename)
@@ -175,17 +200,37 @@ def store_to_sqlite(df: pl.DataFrame, db_filename):
         pass
 
     #Check for existing entries with the same order number (ordno1) and archive items
-    ordnos = set(df['ordno1'].to_list())
+    ordno = 'ordno1' if 'ordno1' in df else 'ord_no'
+    ordnos = set(df[ordno].to_list())
+      # Get the column names from the 'items' table, excluding any special columns like 'archived_timestamp'
+    cursor.execute('PRAGMA table_info(items)')
+    column_names = [row[1] for row in cursor.fetchall()]
+
+    columns = ", ".join(column_names)
+    placeholders = ", ".join("?" for _ in column_names)
+
     for ordno in ordnos:
         # Move existing entries with the same order number to the archive
         cursor.execute('Select * from items WHERE "ordno1" = ?',(ordno,))
         existing_items = cursor.fetchall()
+        # cursor.execute("PRAGMA table_info(items)")
+        
         if existing_items:
             archive_time = datetime.now().isoformat()
             cursor.execute('BEGIN TRANSACTION;')
+
+            # Insert each item into the archive table with a timestamp
             for item in existing_items:
-                insert_query = 'INSERT INTO archive SELECT *, ? FROM items WHERE "ordno1" = ?'
-                cursor.execute(insert_query, (archive_time,ordno))
+                # Append the timestamp to each item tuple
+                archive_values = item + (archive_time,)
+                insert_query =f'INSERT INTO archive ({columns}, archived_timestamp) VALUES ({placeholders}, ?)'
+
+                #  f'INSERT INTO archive ({columns}, "archived_timestamp") VALUES ({", ".join("?" for _ in item)}, ?)', (*item, archive_time)
+                cursor.execute(insert_query, archive_values)
+        
+            # for item in existing_items:
+            #     insert_query = 'INSERT INTO archive SELECT *, ? FROM items WHERE "ordno1" = ?'
+            #     cursor.execute(insert_query, (archive_time,ordno))
             cursor.execute('DELETE FROM items WHERE "ordno1" = ?', (ordno,))
             cursor.execute('COMMIT;')
 
@@ -389,7 +434,7 @@ def get_items_by_date_range(db_filename, start_date, end_date):
         rows = []
         errors = err
     return {"schema": schema, "data": rows, "errors": errors}
-
+    
 def process_xml_file(input_file:str, output_to_csv:bool=False):
     
     # Convert and print the JSON output
@@ -465,8 +510,96 @@ def clear_temp_directory(directory: str):
                 shutil.rmtree(file_path)
         except Exception as e:
             print(f"Failed to delete {file_path}. Reason: {e}")
+
+def set_preferred_database(LOCAL_DATABASE:str, PREFERRED_DATABASE:str):
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect(LOCAL_DATABASE)
+        cursor = conn.cursor()
+
+        # SQL statement to select items within the specified date range
+        # Assume the date column is stored in ISO format (e.g., 'YYYY-MM-DD')
+        # Create the item_settings table if it doesn't exist
+        default_id = 'preferred'
+        default_path = LOCAL_DATABASE  # This should be a controlled variable, not direct user input
+
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS saved_databases (
+                id TEXT PRIMARY KEY,
+                path TEXT
+            )
+        ''')
+        
+        query_sql = '''
+                SELECT *
+                FROM saved_databases
+                WHERE id = 'preferred'
+                '''
+        cursor.execute(query_sql)
+        
+        if not cursor.fetchone():
+            insert_sql = '''
+            INSERT INTO saved_databases (id, path) VALUES (?, ?)
+            '''
+            try:
+                cursor.execute(insert_sql, (default_id, default_path))
+                conn.commit()  # Make sure to commit the changes to the database
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+        # SQL statement to update the status of a specific row identified by UUID
+        update_sql = '''
+        UPDATE saved_databases
+        SET path = ?
+        WHERE id = ?
+        '''
+        # Execute the update command
+        cursor.execute(update_sql, (PREFERRED_DATABASE, 'preferred'))
+        # Close the database connection
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(e)
+        pass
+    
+
+def load_preferred_database(LOCAL_DATABASE:str):
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect(LOCAL_DATABASE)
+        cursor = conn.cursor()
+        # Check if the item_settings table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='saved_databases'")
+        if not cursor.fetchone():
+            # Table does not exist, so initialize it
+            print("saved_databases table does not exist. Initializing...")
+            set_preferred_database(LOCAL_DATABASE=LOCAL_DATABASE, PREFERRED_DATABASE=LOCAL_DATABASE)
+        
+        query_sql = '''
+        SELECT *
+        FROM saved_databases
+        WHERE id = 'preferred'
+        '''
+
+        # Execute the query with start and end dates as parameters
+        cursor.execute(query_sql)
+
+        # Fetch all rows from the query result
+        row = cursor.fetchone()
+        if not row:
+            set_preferred_database(LOCAL_DATABASE, LOCAL_DATABASE)
+            cursor.execute(query_sql)
+            row = cursor.fetchone()
+        
+        # Close the database connection
+        conn.close()
+    except Exception as e:
+        print(e)
+        pass
+    return row[1]
     
 if __name__ == "__main__":
+    row = load_preferred_database("HG_Sales_DB.db")
     data = get_all_items(db_filename="HG_Sales_DB.db")
     df = process_xml_file(input_file='HG_Open_Sales_Orders_by_Req_Ship.xml', output_to_csv=True)
     write_to_csv(df=df, filepath="output.csv")
