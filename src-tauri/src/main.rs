@@ -8,7 +8,7 @@ fn main() {
   tauri::Builder::default()
     .setup(|app| {
             // Start the python server on startup
-            let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
+            // let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
             let app_handle = app.handle();
             let main_window = app.get_window("main").unwrap();

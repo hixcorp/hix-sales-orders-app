@@ -48,9 +48,7 @@ export default function RootLayout({
             
             <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
         </div>
-          <SalesDataProvider>
             {children}
-          </SalesDataProvider>
           <Toaster/>
       </body>
     </html>
