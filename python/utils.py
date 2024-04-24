@@ -187,6 +187,7 @@ def store_to_sqlite(df: pl.DataFrame, db_filename):
     archive_table_sql = f'CREATE TABLE IF NOT EXISTS archive ({archive_columns_sql})'
     cursor.execute(archive_table_sql)
 
+    # Dynamically add any missing columns to the archive table
     cursor.execute("PRAGMA table_info(archive)")
     existing_archive_columns = {row[1] for row in cursor.fetchall()}
     new_archive_columns = set(columns + ['archived_timestamp']) - existing_archive_columns
@@ -224,13 +225,8 @@ def store_to_sqlite(df: pl.DataFrame, db_filename):
                 # Append the timestamp to each item tuple
                 archive_values = item + (archive_time,)
                 insert_query =f'INSERT INTO archive ({columns}, archived_timestamp) VALUES ({placeholders}, ?)'
-
-                #  f'INSERT INTO archive ({columns}, "archived_timestamp") VALUES ({", ".join("?" for _ in item)}, ?)', (*item, archive_time)
                 cursor.execute(insert_query, archive_values)
         
-            # for item in existing_items:
-            #     insert_query = 'INSERT INTO archive SELECT *, ? FROM items WHERE "ordno1" = ?'
-            #     cursor.execute(insert_query, (archive_time,ordno))
             cursor.execute('DELETE FROM items WHERE "ordno1" = ?', (ordno,))
             cursor.execute('COMMIT;')
 
@@ -252,7 +248,7 @@ def write_to_csv(df: pl.DataFrame, filepath:str, include_comments:bool=True):
 
 def clear_old_archived_data(db_filename):
     # Calculate the date 30 days ago from today
-    thirty_days_ago = datetime.now() - timedelta(days=30)
+    thirty_days_ago = datetime.now() - timedelta(days=3)
     
     # Connect to the SQLite database
     conn = sqlite3.connect(db_filename)
@@ -293,7 +289,7 @@ def update_status_by_uuid(db_filename, uuid, new_status):
     # Close the database connection
     conn.close()
 
-def initialize_item_settings(db_path):
+def initialize_or_update_item_settings(db_path):
     connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
 
@@ -337,8 +333,8 @@ def update_item_settings(db_path, settings):
     if not cursor.fetchone():
         # Table does not exist, so initialize it
         print("item_settings table does not exist. Initializing...")
-        initialize_item_settings(db_path)
-    
+    initialize_or_update_item_settings(db_path)
+ 
     # Prepare update statement
     update_stmt = "UPDATE item_settings SET hidden = ?, display_name = ? WHERE column_name = ?"
     for setting in settings:
@@ -359,7 +355,7 @@ def get_item_settings(db_path):
         if not cursor.fetchone():
             # Table does not exist, so initialize it
             print("item_settings table does not exist. Initializing...")
-            initialize_item_settings(db_path)
+        initialize_or_update_item_settings(db_path)
 
         # Fetching all settings from item_settings table
         cursor.execute("SELECT column_name, hidden, display_name FROM item_settings")

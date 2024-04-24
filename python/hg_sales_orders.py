@@ -5,15 +5,7 @@ from datetime import datetime
 import utils
 import polars as pl
 from db_conn import conn_str, hg_order_by_req_ship, all_comments, all_items
-
-class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)  # Convert decimal instances to float
-        elif isinstance(obj, datetime):
-            return obj.isoformat()  # Convert datetime instances to ISO format string
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, obj)
+from mssql import MSSQLConnector, CustomEncoder
     
 def process_order_status(record):
     """

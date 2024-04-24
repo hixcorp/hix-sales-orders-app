@@ -10,14 +10,14 @@ fn main() {
             // Start the python server on startup
             let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
-            // let app_handle = app.handle();
+            let app_handle = app.handle();
             let main_window = app.get_window("main").unwrap();
             main_window.on_window_event(move |event| match event {
                 WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     
                      // Clone the handle inside the closure for use in the async context
-                    // let handle = app_handle.clone();
+                    let handle = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
                         // shutdown_python_server().await;
                         
@@ -26,10 +26,10 @@ fn main() {
                         //   Ok(()) => println!("Python server process closed successfully"),
                         //   err => println!("Python server process did not close successfully {:?}", err)
                         // }
-                        // // After the server shutdown, close the window
-                        // if let Some(window) = handle.get_window("main") {
-                        //     window.close().expect("failed to close window");
-                        // }
+                        // After the server shutdown, close the window
+                        if let Some(window) = handle.get_window("main") {
+                            window.close().expect("failed to close window");
+                        }
                     });
                 },
                 _ => {}
