@@ -27,6 +27,7 @@ export interface Store {
     loading: boolean;
     editing: boolean;
     table_view: string,
+    expand_all: boolean,
     fetch_errors: string;
     orders_due_this_week: string[];
     orders_past_due: string[];
@@ -53,7 +54,8 @@ export const store = proxy<Store>({
     sales_settings: defaultSalesSettings,
     loading: false,
     editing: false,
-    table_view: 'item',
+    table_view: 'order',
+    expand_all: true,
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
@@ -108,8 +110,7 @@ export const store = proxy<Store>({
 
 // Using a focused subscription
 subscribe(store.sales_data, () => {
-    // Compute the due and past due orders whenever sales_data.data changes
-    console.log({store})
+
     const currentDate = new Date();
     const startOfWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - currentDate.getDay());
     const endOfWeek = new Date(startOfWeek);
@@ -130,5 +131,46 @@ subscribe(store.sales_data, () => {
     ).map(([orderNumber]) => orderNumber);
 });
 
+// subscribe(store.sales_data.schema, ()=>{
+//     get_table_definition()
+// })
+
+// subscribe(store.sales_settings.data, ()=>{
+//     get_table_definition()
+// })
+
 store.fetchData()
 store.fetchSettings()
+
+import { ColumnDef } from '@tanstack/react-table';
+
+export interface TableData{
+    [key: string]: any;
+}
+
+export function get_table_definition(): ColumnDef<TableData>[]{
+    const columns: ColumnDef<TableData>[] = store.sales_data.schema.map((col, idx) => {
+        const c_settings = store.sales_settings.data.find(item => item.column_name === col)
+
+        return {
+            id: `${col}_${idx}`,
+            accessorKey: col,
+            header: c_settings?.display_name || col,
+            cell: info => info.getValue(),
+            enableHiding: true,
+            isVisible: !c_settings?.hidden
+        }
+    })
+    return columns
+}
+
+export function get_table_data(): TableData[] {
+    const schema = store.sales_data.schema
+    return store.sales_data.data.map(row => {
+        let obj:TableData = {};
+        row.forEach((value, index) => {
+            obj[schema[index]] = value;
+        });
+        return obj;
+    })
+}

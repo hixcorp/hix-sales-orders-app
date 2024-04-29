@@ -23,7 +23,7 @@ export default function Home() {
         <Suspense fallback={"Loading..."}>
             <SalesOrderData />
         </Suspense>
-        {/* <ChangeDatabaseDirectory button_label="Change Database Location"/> */}
+        <ChangeDatabaseDirectory button_label="Change Database Location"/>
     </>    
   )
 }

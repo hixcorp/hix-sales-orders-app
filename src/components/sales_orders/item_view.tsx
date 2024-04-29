@@ -2,7 +2,7 @@
 import React from 'react';
 import { useSnapshot } from 'valtio';
 import {  store } from '@/store/sales_data_store';
-import { TableRow, TableCell } from "@/components/ui/table"; // Adjust imports
+import { TableRow, TableCell } from "@/components/ui/table";
 
 export default function ItemView() {
     const snap = useSnapshot(store);
@@ -27,7 +27,6 @@ export default function ItemView() {
 }
 
 export const ItemRow = ({ordno, row, bg}:{ordno:string, row:string[], bg:boolean}) => {
-    console.log({row})
     const snap = useSnapshot(row)
     const snap_store = useSnapshot(store)
     
@@ -52,12 +51,7 @@ export const ItemRow = ({ordno, row, bg}:{ordno:string, row:string[], bg:boolean
 
 const ItemCell = ({row, idx}:{row:string[], idx:number}) =>{
     const snap = useSnapshot(row)
-
-    // const handleEditRowCell = (e) => {
-
-    // }
-
     return(
-        <TableCell key={`data_cell_${idx}`} className='p-0 pl-2'>{snap[idx]}</TableCell>
+        <TableCell key={`data_cell_${idx}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>{snap[idx]}</TableCell>
     )
 }

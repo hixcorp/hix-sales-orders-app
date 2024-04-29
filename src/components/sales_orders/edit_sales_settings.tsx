@@ -16,8 +16,12 @@ export const EditSalesSettings = () => {
   
   return (
     <TableRow className='py-2'>
-      {Array.from(Array(snap.sales_settings.data.length).keys()).map((i) =>
-        <EditCell key={`${snap.sales_settings.data[i].column_name}_${i}`} c_settings={store.sales_settings.data[i]}/>
+      {Array.from(Array(snap.sales_data.schema.length).keys()).map((i) =>
+        {
+          const c_settings = store.sales_settings?.data?.find(item => item.column_name === store.sales_data.schema[i])
+          if (c_settings===undefined) return <TableCell className='text-red-700'>Column Settings Missing</TableCell>
+          return <EditCell key={`${c_settings?.column_name}_${i}`} c_settings={c_settings}/>
+      }
       )}
     </TableRow>
   );
@@ -26,12 +30,10 @@ export const EditSalesSettings = () => {
 const EditCell = ({c_settings}:{c_settings:ColumnSettings}) => {
   const snap = useSnapshot(c_settings, {sync:true})
   const handleDisplayName = (e: React.ChangeEvent<HTMLInputElement>, c_settings: ColumnSettings) => {
-    // Directly modify and trigger updates in the store
     c_settings.display_name = e.target.value;
   };
 
   const handleHiddenColumn = (e: CheckedState, c_settings: ColumnSettings) => {
-    // Directly modify and trigger updates in the store
     c_settings.hidden = e as boolean;
   };
 

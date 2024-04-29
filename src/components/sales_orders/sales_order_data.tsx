@@ -1,11 +1,10 @@
 'use client'
-import React, { useState } from 'react';
+import React from 'react';
 import { useSnapshot } from 'valtio';
-import { store } from '../../store/sales_data_store'; // Adjust this path to where your store is defined
+import { store } from '../../store/sales_data_store'; 
 import {  Table } from "@/components/ui/table"
 import { Button } from '@/components/ui/button'
 import TableRender from './table_render';
-
 
 const SalesOrderData: React.FC = () => {
     const snap = useSnapshot(store);
@@ -32,6 +31,10 @@ const SalesOrderData: React.FC = () => {
       store.table_view = store.table_view !== 'item' ? 'item' : 'order'
     }
 
+    const toggleExpandAll = () => {
+        store.expand_all = !store.expand_all
+    }
+
     return (
         <>
             <div className='flex justify-between align-center items-center bg-secondary'>
@@ -43,6 +46,7 @@ const SalesOrderData: React.FC = () => {
                 </div>
                 <div className='flex gap-1'>
                     <Button className='m-0 h-8' onClick={toggleViewMode}>{snap.table_view === 'item' ? 'Switch to Order View' : 'Switch to Item View'}</Button>
+                    {snap.table_view === 'order' && <Button className='m-0 h-8' onClick={toggleExpandAll}>{snap.expand_all ? 'Collapse All' : 'Expand All'}</Button>}
                 </div>
                 <div>
                     {snap.editing && <Button onClick={handleCancelEdit} className='m-0 h-8'>Cancel</Button>}
@@ -50,7 +54,7 @@ const SalesOrderData: React.FC = () => {
                 </div>
             </div>
             <div className='border overflow-auto'>
-            <Table className='text-[9px] p-[0px] m-[0px] text-left align-left'>
+            <Table className='border overflow-auto text-[9px] p-[0px] m-[0px] text-left align-left'>
                 <TableRender/>
             </Table>
             </div>

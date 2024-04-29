@@ -9,6 +9,7 @@ import { SalesDataContext } from '@/app/salesdata_provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from './ui/label';
 import { DatabaseZap } from 'lucide-react';
+import { store } from '@/store/sales_data_store';
 
 interface DirectorySelectorProps {
     button_label?: string,
@@ -24,7 +25,7 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
     const [locationType, setLocationType] = useState<string>('folder')
     const [errors, setErrors] = useState<string>('')
 
-    const {get_sales_settings, update_sales_data, sales_data} = useContext(SalesDataContext)
+    const { update_sales_data, sales_data} = useContext(SalesDataContext)
     const handleSelectDirectory = async () => {
         try {
             //Load local folder from the file system if not using url
@@ -71,7 +72,8 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
         }
 
         get_db_info()
-        update_sales_data()
+        store.fetchData()
+        // update_sales_data()
     };
 
     const handleResetDatabase = async () => {
