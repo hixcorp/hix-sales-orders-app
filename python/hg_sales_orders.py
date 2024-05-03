@@ -89,12 +89,40 @@ def get_all_items_on_order(conn_str: str):
 
     # Serialize to JSON (if needed)
     json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+    data = json.loads(json_results)
+    
     
     return json_results
 
 
 
+def get_all_items(db_filename):
+    errors = ''
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect(db_filename)
+        cursor = conn.cursor()
 
+        # SQL statement to select items within the specified date range
+        # Assume the date column is stored in ISO format (e.g., 'YYYY-MM-DD')
+        query_sql = '''
+        SELECT *
+        FROM items
+        '''
+
+        # Execute the query with start and end dates as parameters
+        cursor.execute(query_sql)
+
+        # Fetch all rows from the query result
+        rows = cursor.fetchall()
+        schema = [d[0] for d in cursor.description]
+        # Close the database connection
+        conn.close()
+    except Exception as err:
+        schema = []
+        rows = []
+        errors = err
+    return {"schema": schema, "data": rows, "errors": errors}
 
 if __name__ == '__main__':
 

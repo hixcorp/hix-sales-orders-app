@@ -8,13 +8,8 @@ import { CheckedState } from '@radix-ui/react-checkbox';
 import {ColumnSettings, SalesSettings} from '@/store/sales_data_store'
 
 export const EditSalesSettings = () => {
-  const snap = useSnapshot(store);
   const columns = Object.keys(store.sales_data.data[0])
-  // if (JSON.stringify(snap.sales_settings.data) === JSON.stringify({})) {
-  //   return <></>;
-  // }
   
-  console.log({columns, store})
   return (
     <TableRow className='py-2'>
       {columns.map((c,i) =>
@@ -30,7 +25,6 @@ export const EditSalesSettings = () => {
 
 const EditCell = ({c_settings}:{c_settings:ColumnSettings}) => {
   const snap = useSnapshot(c_settings, {sync:true})
-  // console.log({c_settings, snap})
   const handleDisplayName = (e: React.ChangeEvent<HTMLInputElement>, c_settings: ColumnSettings) => {
     c_settings.display_name = e.target.value;
   };
