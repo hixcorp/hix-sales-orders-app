@@ -9,11 +9,10 @@ import TableRender from './table_render';
 const SalesOrderData: React.FC = () => {
     const snap = useSnapshot(store);
     
-    const ordnoIndex = snap.sales_data.schema.findIndex(item => ['ordno1','ord_no'].includes(item));
-    const uniqueOrders = new Set(snap.sales_data.data.map(row => row[ordnoIndex]));
+    const uniqueOrders = new Set(snap.sales_data.data.map(row => row['ord_no']));
     
     if (snap.loading) return <h1 className='flex justify-center text-xl text-blue-500'>Loading...</h1>;
-    if (!snap.sales_data || !snap.sales_data.schema.length) return <h1 className='flex justify-center text-xl text-red-600'>No sales data found in database</h1>;
+    if (!snap.sales_data || !Object.keys(snap.sales_data.data).length) return <h1 className='flex justify-center text-xl text-red-600'>No sales data found in database</h1>;
 
     const handleEditColumns = async () => {    
         if (store.editing) {

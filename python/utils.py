@@ -162,8 +162,8 @@ def add_user_input_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 def store_to_sqlite(df: pl.DataFrame, db_filename):
-    df = add_uuid_column(df=df)
-    df = add_user_input_columns(df=df)
+    # df = add_uuid_column(df=df)
+    # df = add_user_input_columns(df=df)
     conn = sqlite3.connect(database=db_filename)
     cursor = conn.cursor()
 

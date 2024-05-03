@@ -13,7 +13,7 @@ import os
 global DATABASE, LOCAL_DATABASE
 
 app = FastAPI()
-DATABASE_NAME = 'HG_Sales_DBv1.db'
+DATABASE_NAME = 'HG_Sales_DBv2.db'
 HOST='127.0.0.1'
 PORT=8000
 BASE_DIR = utils.get_base_directory()

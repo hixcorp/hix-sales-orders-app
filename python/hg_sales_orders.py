@@ -4,7 +4,7 @@ from decimal import Decimal
 from datetime import datetime
 import utils
 import polars as pl
-from db_conn import conn_str, hg_order_by_req_ship, all_comments, all_items
+from db_conn import conn_str, hg_order_by_req_ship
 from mssql import MSSQLConnector, CustomEncoder
     
 def process_order_status(record):
@@ -49,6 +49,51 @@ def process_order_status(record):
         return "Order awaiting customer confirmation"
     else:
         return ""
+
+def get_all_items_on_order(conn_str: str):
+    cnx = pyodbc.connect(conn_str)
+    cursor = cnx.cursor()
+
+    # Execute the main query
+    cursor.execute(hg_order_by_req_ship)
+    columns = [column[0] for column in cursor.description]
+    results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Append comments to each item in the main results while fetching
+    for r in results:
+        r['hold_status'] = process_order_status(r)
+        r['cmt'] = ''  # Initialize the comment field with an empty string
+
+        # Establish a new cursor for comments fetching specific to each order and line sequence
+        comment_query = f'''SELECT "line_seq_no", "cmt_seq_no", "cmt" FROM "001"."dbo"."oelincmt_sql" WHERE "ord_no"='{r['ord_no']}' ORDER BY "line_seq_no", "cmt_seq_no"'''
+        cursor.execute(comment_query)
+        comments = cursor.fetchall()
+
+        # Create a dictionary to hold comments for the current order
+        comments_dict = {}
+        for line_seq_no, cmt_seq_no, cmt in comments:
+            key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
+            if key not in comments_dict:
+                comments_dict[key] = cmt.strip()  # Start with the first comment part
+            else:
+                comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
+
+        # Assign comments to the current item in results if they exist
+        current_key = (r['ord_no'], r['line_seq_no'])
+        if current_key in comments_dict:
+            r['cmt'] = comments_dict[current_key]
+
+    # Close the connection
+    cursor.close()
+    cnx.close()
+
+    # Serialize to JSON (if needed)
+    json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+    
+    return json_results
+
+
+
 
 
 if __name__ == '__main__':

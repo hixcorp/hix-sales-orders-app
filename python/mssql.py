@@ -66,7 +66,8 @@ def process_order_status(record):
         return ""
 
 
-if __name__ == '__main__':
+def get_all_items():
+    global conn_str
     mssql = MSSQLConnector(conn_str)
     conn_str = mssql.conn_str
     cnx = pyodbc.connect(conn_str)
@@ -81,10 +82,12 @@ if __name__ == '__main__':
     for r in results:
         r['hold_status'] = process_order_status(r)
         r['cmt'] = ''  # Initialize the comment field with an empty string
+        for v in r:
+            if isinstance(r[v], str): r[v] = r[v].strip()
 
         # Establish a new cursor for comments fetching specific to each order and line sequence
         
-        cursor.execute(comment_query)
+        cursor.execute(comment_query(r))
         comments = cursor.fetchall()
 
         # Create a dictionary to hold comments for the current order
@@ -107,12 +110,13 @@ if __name__ == '__main__':
 
     # Serialize to JSON (if needed)
     json_results = json.dumps(results, indent=4,cls=CustomEncoder)
-    print(json_results)
+    
+    # print(json_results)
     data = json.loads(json_results)
+    return {"data":data, "schema": columns}
+    # df = pl.DataFrame(data)
 
-    df = pl.DataFrame(data)
-
-    database_file = 'MSSQL_output.db'
-    utils.store_to_sqlite(df, database_file)
-    print(df)
+    # database_file = 'MSSQL_output.db'
+    # utils.store_to_sqlite(df, database_file)
+    # print(df)
 

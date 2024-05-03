@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
-import { store } from '@/store/sales_data_store';
+import { Data, store } from '@/store/sales_data_store';
 import { useSnapshot } from 'valtio';
 
-const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: string[][], bg: boolean }) => {
+const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: boolean }) => {
   const [collapsed, setCollapsed] = useState(true);
   const snap_store = useSnapshot(store);
-  
   useEffect(() => {
     // This effect toggles the collapsed state based on the global expand_all state
     if (snap_store.expand_all !== undefined) {
@@ -22,36 +21,28 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: string[][], 
     <div className='bg-red-300 p-1 m-0 rounded-md text-[9px] font-bold text-primary'>Past Due</div>
   ) : "";
 
-  const order_fields = ['GroupNamereqshipdtweekly1', 'ordno1', 'cusno1', 'billtoname1', 'shiptoname1', 'HoldStatus1'];
-
   return (
     <>
       <TableRow onClick={() => setCollapsed(prev => !prev)}
-                className={collapsed ? 'bg-secondary hover:text-primary' : 'bg-primary text-white hover:text-white hover:bg-primary'}>
-        {rows[0].map((c: string, i: number) => {
-          const c_settings = snap_store.sales_settings.data.find(item => item.column_name === snap_store.sales_data.schema[i]);
-          if (!snap_store.editing && c_settings?.hidden) return null;
-
-          return (
-            <TableCell key={`data_cell_${i}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
-              {order_fields.includes(String(c_settings?.column_name)) ? c : ''}
-            </TableCell>
-          );
-        })}
+                className={collapsed ? 'bg-secondary hover:text-primary' : 'bg-primary text-white hover:text-white hover:bg-primary'}
+                >
+                  <HeaderCells rows={rows} />
         <TableCell className='flex p-0 m-0 text-left pl-2'>
           {due_this_week}
           {late}
         </TableCell>
       </TableRow>
       {
-        (!collapsed) && rows.map((row: string[], index: number) => (
+        (!collapsed) && 
+        rows.map((row: Data, index: number) => (
           <TableRow key={`group_row_${index}`}>
-            {row.map((c, i) => {
-              const c_settings = snap_store.sales_settings.data.find(item => item.column_name === snap_store.sales_data.schema[i]);
-              if (!snap_store.editing && c_settings?.hidden) return null;
+            {Object.keys(row).map((c, i) => {
+              const c_settings = snap_store.sales_settings.data.find(item => item.column_name === c);
+              // if (!snap_store.editing && c_settings?.hidden) return null;
               return (
                 <TableCell key={`cell_data_${i}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
-                  {order_fields.includes(String(c_settings?.column_name)) ? '' : c.replaceAll('>', '\n')}
+                  {String(row[c]).replaceAll('>','/n')}
+                  {/* {order_fields.includes(String(c_settings?.column_name)) ? '' : row[c].replaceAll('>', '\n')} */}
                 </TableCell>
               );
             })}
@@ -63,3 +54,30 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: string[][], 
 };
 
 export default CollapsibleRow;
+
+const HeaderCells = ({rows}: {rows:Data[]}) => {
+
+  return (
+    Object.keys(rows[0]).map((c: string, i: number) => {          
+        return (
+          <HeaderCell key={`data_cell_${i}`} row={rows[0]} c={c} />
+        );
+      })
+    )
+}
+
+const HeaderCell = ({row, c}:{row:Data, c:string}) => {
+  const snap = useSnapshot(row)
+  const snap_store = useSnapshot(store)
+  const order_fields = ['GroupNamereqshipdtweekly1', 'ordno1', 'cusno1', 'billtoname1', 'shiptoname1', 'HoldStatus1'];
+  const c_settings = snap_store.sales_settings.data.find(item => item.column_name === c)
+
+  if (!snap_store.editing && !!c_settings && c_settings.hidden) return <></>
+
+  return (
+    <TableCell className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>
+      {String(snap[c]).replaceAll('>','/n')}
+      {/* {order_fields.includes(String(c_settings?.column_name||c)) ? rows[0][c] : ''} */}
+    </TableCell>
+  )
+}
