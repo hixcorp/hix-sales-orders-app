@@ -1,3 +1,4 @@
+import sqlite3
 import pyodbc
 import json
 from decimal import Decimal
@@ -68,52 +69,99 @@ def process_order_status(record):
 
 def get_all_items():
     global conn_str
-    mssql = MSSQLConnector(conn_str)
-    conn_str = mssql.conn_str
-    cnx = pyodbc.connect(conn_str)
-    cursor = cnx.cursor()
+    database_file = 'MSSQL_output.db'
 
+    if not utils.cache_expired(time_delta=0.01, db_filename=database_file):
+        cached_data = get_all_cached_items(database_file)
+        return cached_data
     # Execute the main query
-    cursor.execute(hg_order_by_req_ship)
-    columns = [column[0] for column in cursor.description]
-    results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    try:
+        mssql = MSSQLConnector(conn_str)
+        conn_str = mssql.conn_str
+        cnx = pyodbc.connect(conn_str)
+        cursor = cnx.cursor()
 
-    # Append comments to each item in the main results while fetching
-    for r in results:
-        r['hold_status'] = process_order_status(r)
-        r['cmt'] = ''  # Initialize the comment field with an empty string
-        for v in r:
-            if isinstance(r[v], str): r[v] = r[v].strip()
+        # Execute the main query
+        cursor.execute(hg_order_by_req_ship)
+        columns = [column[0] for column in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Establish a new cursor for comments fetching specific to each order and line sequence
+        # Append comments to each item in the main results while fetching
+        for r in results:
+            r['hold_status'] = process_order_status(r)
+            r['cmt'] = ''  # Initialize the comment field with an empty string
+            for v in r:
+                if isinstance(r[v], str): r[v] = r[v].strip()
+
+            # Establish a new cursor for comments fetching specific to each order and line sequence
+            cursor.execute(comment_query(r))
+            comments = cursor.fetchall()
+
+            # Create a dictionary to hold comments for the current order
+            comments_dict = {}
+            for line_seq_no, cmt_seq_no, cmt in comments:
+                key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
+                if key not in comments_dict:
+                    comments_dict[key] = cmt.strip()  # Start with the first comment part
+                else:
+                    comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
+
+            # Assign comments to the current item in results if they exist
+            current_key = (r['ord_no'], r['line_seq_no'])
+            if current_key in comments_dict:
+                r['cmt'] = comments_dict[current_key]
+
+        # Close the connection
+        cursor.close()
+        cnx.close()
+
+        # Serialize to JSON (if needed)
+        json_results = json.dumps(results, indent=4,cls=CustomEncoder)
         
-        cursor.execute(comment_query(r))
-        comments = cursor.fetchall()
+        # print(json_results)
+        data = json.loads(json_results)
+                
+        df = pl.DataFrame(data)
+        
+        utils.store_to_sqlite(df, database_file)
 
-        # Create a dictionary to hold comments for the current order
-        comments_dict = {}
-        for line_seq_no, cmt_seq_no, cmt in comments:
-            key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
-            if key not in comments_dict:
-                comments_dict[key] = cmt.strip()  # Start with the first comment part
-            else:
-                comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
-
-        # Assign comments to the current item in results if they exist
-        current_key = (r['ord_no'], r['line_seq_no'])
-        if current_key in comments_dict:
-            r['cmt'] = comments_dict[current_key]
-
-    # Close the connection
-    cursor.close()
-    cnx.close()
-
-    # Serialize to JSON (if needed)
-    json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+        return {"data":data, "schema": columns, "cached": False}
+    except Exception as e:
+        print(e)
+        cached_data = get_all_cached_items(database_file)
+        if not cached_data["errors"]: cached_data["errors"] = ["Could not connect to source database"]
+        return cached_data
     
-    # print(json_results)
-    data = json.loads(json_results)
-    return {"data":data, "schema": columns}
+
+def get_all_cached_items(db_filename):
+    errors = ''
+    try:
+        # Connect to the SQLite database
+        conn = sqlite3.connect(db_filename)
+        cursor = conn.cursor()
+
+        # SQL statement to select items within the specified date range
+        # Assume the date column is stored in ISO format (e.g., 'YYYY-MM-DD')
+        query_sql = '''
+        SELECT *
+        FROM items
+        '''
+
+        # Execute the query with start and end dates as parameters
+        cursor.execute(query_sql)
+
+        # Fetch all rows from the query result
+        # rows = cursor.fetchall()
+        schema = [d[0] for d in cursor.description]
+        data = [dict(zip(schema, row)) for row in cursor.fetchall()]
+        # Close the database connection
+        conn.close()
+    except Exception as err:
+        schema = []
+        rows = []
+        errors = err
+    return {"schema": schema, "data": data, "errors": errors, "cached":True}
+
     # df = pl.DataFrame(data)
 
     # database_file = 'MSSQL_output.db'

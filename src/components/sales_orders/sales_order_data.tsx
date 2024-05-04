@@ -11,11 +11,8 @@ const SalesOrderData: React.FC = () => {
     
     const uniqueOrders = new Set(snap.sales_data.data.map(row => row['ord_no']));
     
-    if (snap.loading) return <h1 className='flex justify-center text-xl text-blue-500'>Loading...</h1>;
-    if (!snap.sales_data || !Object.keys(snap.sales_data.data).length) return <h1 className='flex justify-center text-xl text-red-600'>No sales data found in database</h1>;
-
+    if (snap.loading) return <h1 className='h-full w-full flex justify-center text-xl text-blue-500'>Loading...</h1>;
     
-
     return (
         <>
             <div className='flex justify-between align-center items-center bg-secondary'>
@@ -27,7 +24,8 @@ const SalesOrderData: React.FC = () => {
                 </div>
                 <ActionButtons/>
             </div>
-            <div className='border overflow-auto'>
+           
+            <div className='border overflow-auto w-full'>
             <Table className='border overflow-auto text-[9px] p-[0px] m-[0px] text-left align-left'>
                 <TableRender/>
             </Table>
@@ -65,10 +63,11 @@ return(
         <div className='flex gap-1'>
             <Button className='m-0 h-8' onClick={toggleViewMode}>{snap.table_view === 'item' ? 'Switch to Order View' : 'Switch to Item View'}</Button>
             {snap.table_view === 'order' && <Button className='m-0 h-8' onClick={toggleExpandAll}>{snap.expand_all ? 'Collapse All' : 'Expand All'}</Button>}
-        </div><div>
+        </div>
+        <div>
         {snap.editing && <Button onClick={handleCancelEdit} className='m-0 h-8'>Cancel</Button>}
         <Button onClick={handleEditColumns} className='m-0 h-8 w-[12ch]'>{snap.editing ? "Save Changes" : "Edit Columns"}</Button>
-    </div>
+        </div>
     </>
 
 )

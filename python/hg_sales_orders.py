@@ -1,3 +1,4 @@
+import sqlite3
 import pyodbc
 import json
 from decimal import Decimal
@@ -50,126 +51,138 @@ def process_order_status(record):
     else:
         return ""
 
-def get_all_items_on_order(conn_str: str):
-    cnx = pyodbc.connect(conn_str)
-    cursor = cnx.cursor()
+# def get_all_items_on_order(conn_str: str):
+#     database_file = 'MSSQL_output.db'
 
-    # Execute the main query
-    cursor.execute(hg_order_by_req_ship)
-    columns = [column[0] for column in cursor.description]
-    results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+#     if not utils.cache_expired(time_delta=1.0, db_filename=database_file):
 
-    # Append comments to each item in the main results while fetching
-    for r in results:
-        r['hold_status'] = process_order_status(r)
-        r['cmt'] = ''  # Initialize the comment field with an empty string
+#         cached_data = get_all_items(database_file)
 
-        # Establish a new cursor for comments fetching specific to each order and line sequence
-        comment_query = f'''SELECT "line_seq_no", "cmt_seq_no", "cmt" FROM "001"."dbo"."oelincmt_sql" WHERE "ord_no"='{r['ord_no']}' ORDER BY "line_seq_no", "cmt_seq_no"'''
-        cursor.execute(comment_query)
-        comments = cursor.fetchall()
+#         if cached_data["data"]: return cached_data["data"]
 
-        # Create a dictionary to hold comments for the current order
-        comments_dict = {}
-        for line_seq_no, cmt_seq_no, cmt in comments:
-            key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
-            if key not in comments_dict:
-                comments_dict[key] = cmt.strip()  # Start with the first comment part
-            else:
-                comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
+#     # Execute the main query
+#     try:
+#         cnx = pyodbc.connect(conn_str)
+#         cursor = cnx.cursor()
+#         cursor.execute(hg_order_by_req_ship)
+#         columns = [column[0] for column in cursor.description]
+#         results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Assign comments to the current item in results if they exist
-        current_key = (r['ord_no'], r['line_seq_no'])
-        if current_key in comments_dict:
-            r['cmt'] = comments_dict[current_key]
+#         # Append comments to each item in the main results while fetching
+#         for r in results:
+#             r['hold_status'] = process_order_status(r)
+#             r['cmt'] = ''  # Initialize the comment field with an empty string
 
-    # Close the connection
-    cursor.close()
-    cnx.close()
+#             # Establish a new cursor for comments fetching specific to each order and line sequence
+#             comment_query = f'''SELECT "line_seq_no", "cmt_seq_no", "cmt" FROM "001"."dbo"."oelincmt_sql" WHERE "ord_no"='{r['ord_no']}' ORDER BY "line_seq_no", "cmt_seq_no"'''
+#             cursor.execute(comment_query)
+#             comments = cursor.fetchall()
 
-    # Serialize to JSON (if needed)
-    json_results = json.dumps(results, indent=4,cls=CustomEncoder)
-    data = json.loads(json_results)
-    
-    
-    return json_results
+#             # Create a dictionary to hold comments for the current order
+#             comments_dict = {}
+#             for line_seq_no, cmt_seq_no, cmt in comments:
+#                 key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
+#                 if key not in comments_dict:
+#                     comments_dict[key] = cmt.strip()  # Start with the first comment part
+#                 else:
+#                     comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
 
+#             # Assign comments to the current item in results if they exist
+#             current_key = (r['ord_no'], r['line_seq_no'])
+#             if current_key in comments_dict:
+#                 r['cmt'] = comments_dict[current_key]
 
+#         # Close the connection
+#         cursor.close()
+#         cnx.close()
 
-def get_all_items(db_filename):
-    errors = ''
-    try:
-        # Connect to the SQLite database
-        conn = sqlite3.connect(db_filename)
-        cursor = conn.cursor()
+#         # Serialize to JSON (if needed)
+#         json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+#         data = json.loads(json_results)
+        
+#         df = pl.DataFrame(data)
+        
+#         utils.store_to_sqlite(df, database_file)
+        
+#         return json_results
+#     except:
+#         cached_data = get_all_items(database_file)
+#         return cached_data["data"]
 
-        # SQL statement to select items within the specified date range
-        # Assume the date column is stored in ISO format (e.g., 'YYYY-MM-DD')
-        query_sql = '''
-        SELECT *
-        FROM items
-        '''
+# def get_all_items(db_filename):
+#     errors = ''
+#     try:
+#         # Connect to the SQLite database
+#         conn = sqlite3.connect(db_filename)
+#         cursor = conn.cursor()
 
-        # Execute the query with start and end dates as parameters
-        cursor.execute(query_sql)
+#         # SQL statement to select items within the specified date range
+#         # Assume the date column is stored in ISO format (e.g., 'YYYY-MM-DD')
+#         query_sql = '''
+#         SELECT *
+#         FROM items
+#         '''
 
-        # Fetch all rows from the query result
-        rows = cursor.fetchall()
-        schema = [d[0] for d in cursor.description]
-        # Close the database connection
-        conn.close()
-    except Exception as err:
-        schema = []
-        rows = []
-        errors = err
-    return {"schema": schema, "data": rows, "errors": errors}
+#         # Execute the query with start and end dates as parameters
+#         cursor.execute(query_sql)
 
-if __name__ == '__main__':
+#         # Fetch all rows from the query result
+#         rows = cursor.fetchall()
+#         schema = [d[0] for d in cursor.description]
+#         # Close the database connection
+#         conn.close()
+#     except Exception as err:
+#         schema = []
+#         rows = []
+#         errors = err
+#     return {"schema": schema, "data": rows, "errors": errors}
 
-    cnx = pyodbc.connect(conn_str)
-    cursor = cnx.cursor()
+# if __name__ == '__main__':
 
-    # Execute the main query
-    cursor.execute(hg_order_by_req_ship)
-    columns = [column[0] for column in cursor.description]
-    results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+#     cnx = pyodbc.connect(conn_str)
+#     cursor = cnx.cursor()
 
-    # Append comments to each item in the main results while fetching
-    for r in results:
-        r['hold_status'] = process_order_status(r)
-        r['cmt'] = ''  # Initialize the comment field with an empty string
+#     # Execute the main query
+#     cursor.execute(hg_order_by_req_ship)
+#     columns = [column[0] for column in cursor.description]
+#     results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Establish a new cursor for comments fetching specific to each order and line sequence
-        comment_query = f'''SELECT "line_seq_no", "cmt_seq_no", "cmt" FROM "001"."dbo"."oelincmt_sql" WHERE "ord_no"='{r['ord_no']}' ORDER BY "line_seq_no", "cmt_seq_no"'''
-        cursor.execute(comment_query)
-        comments = cursor.fetchall()
+#     # Append comments to each item in the main results while fetching
+#     for r in results:
+#         r['hold_status'] = process_order_status(r)
+#         r['cmt'] = ''  # Initialize the comment field with an empty string
 
-        # Create a dictionary to hold comments for the current order
-        comments_dict = {}
-        for line_seq_no, cmt_seq_no, cmt in comments:
-            key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
-            if key not in comments_dict:
-                comments_dict[key] = cmt.strip()  # Start with the first comment part
-            else:
-                comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
+#         # Establish a new cursor for comments fetching specific to each order and line sequence
+#         comment_query = f'''SELECT "line_seq_no", "cmt_seq_no", "cmt" FROM "001"."dbo"."oelincmt_sql" WHERE "ord_no"='{r['ord_no']}' ORDER BY "line_seq_no", "cmt_seq_no"'''
+#         cursor.execute(comment_query)
+#         comments = cursor.fetchall()
 
-        # Assign comments to the current item in results if they exist
-        current_key = (r['ord_no'], r['line_seq_no'])
-        if current_key in comments_dict:
-            r['cmt'] = comments_dict[current_key]
+#         # Create a dictionary to hold comments for the current order
+#         comments_dict = {}
+#         for line_seq_no, cmt_seq_no, cmt in comments:
+#             key = (r['ord_no'], line_seq_no)  # Unique key for each order and line sequence
+#             if key not in comments_dict:
+#                 comments_dict[key] = cmt.strip()  # Start with the first comment part
+#             else:
+#                 comments_dict[key] += '\n' + cmt.strip()  # Append additional comment parts
 
-    # Close the connection
-    cursor.close()
-    cnx.close()
+#         # Assign comments to the current item in results if they exist
+#         current_key = (r['ord_no'], r['line_seq_no'])
+#         if current_key in comments_dict:
+#             r['cmt'] = comments_dict[current_key]
 
-    # Serialize to JSON (if needed)
-    json_results = json.dumps(results, indent=4,cls=CustomEncoder)
-    print(json_results)
-    data = json.loads(json_results)
+#     # Close the connection
+#     cursor.close()
+#     cnx.close()
 
-    df = pl.DataFrame(data)
+#     # Serialize to JSON (if needed)
+#     json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+#     print(json_results)
+#     data = json.loads(json_results)
 
-    database_file = 'MSSQL_output.db'
-    utils.store_to_sqlite(df, database_file)
-    print(df)
+#     df = pl.DataFrame(data)
+
+#     database_file = 'MSSQL_output.db'
+#     utils.store_to_sqlite(df, database_file)
+#     print(df)
 

@@ -3,6 +3,9 @@ import React from 'react';
 import { useSnapshot } from 'valtio';
 import {  Data, store } from '@/store/sales_data_store';
 import { TableRow, TableCell } from "@/components/ui/table";
+import { CircleAlert, CircleX } from 'lucide-react';
+import { flexRender } from '@tanstack/react-table';
+import { formatDate, isISODateString } from './collapsible_row';
 
 export default function ItemView() {
     const snap = useSnapshot(store);
@@ -29,18 +32,24 @@ export const ItemRow = ({ordno, row, bg}:{ordno:string | number, row:Data, bg:bo
     const snap = useSnapshot(row)
     const snap_store = useSnapshot(store)
     
-    const due_this_week = snap_store.orders_due_this_week.includes(String(ordno)) ? <div className='bg-yellow-300 p-1 rounded-md font-bold'>Due This Week</div> : "";
-    const late = snap_store.orders_past_due.includes(String(ordno)) ? <div className='bg-red-300 p-1 rounded-md font-bold'>Past Due</div> : "";
+    const due_this_week = snap_store.orders_due_this_week.includes(String(ordno)) ? 
+        <div className={`p-0 m-0 text-xs font-extrabold gap-2 text-yellow-500 flex items-center`}><CircleAlert />Due This Week</div>
+    : "";
+    const late = snap_store.orders_past_due.includes(String(ordno)) ? 
+    <div className='p-0 m-0 text-xs font-extrabold gap-2 text-destructive flex items-center'><CircleX />Past Due</div>
+    : "";
     
     return(
         <TableRow  className={`p-0 ${bg ? 'bg-secondary' : ''}`}>
+            <TableCell className='flex p-0 pl-2 flex flex-col w-40'>{due_this_week}{late}</TableCell>
             {Object.keys(snap).map((key:string,i:number)=>{
 
                 return(
+                    
                     <ItemCell row={row} item_key={key} idx={i} key={`data_cell_${i}`} />
                 )
             })}
-            <TableCell className='flex p-0 pl-2'>{due_this_week}{late}</TableCell>
+            
         </TableRow>
     )
 }
@@ -48,11 +57,19 @@ export const ItemRow = ({ordno, row, bg}:{ordno:string | number, row:Data, bg:bo
 const ItemCell = ({row, item_key, idx}:{row:Data, item_key:string, idx:number}) =>{
     const snap = useSnapshot(row)
     const snap_store = useSnapshot(store)
-    const c_settings = snap_store.sales_settings.data.find(item => item.column_name === item_key)
+    const c_settings = snap_store.sales_settings[item_key]
 
     if (!snap_store.editing && c_settings?.hidden) return<></>
+
+    const value = String(snap[item_key]);
+    const cellContent = isISODateString(value) ? formatDate(value) : value.replaceAll('>', '/n');
+
     
     return(
-        <TableCell key={`data_cell_${idx}`} className='p-0 m-0 text-left pl-2 w-min max-w-[15ch]'>{snap[item_key]}</TableCell>
+        <TableCell key={`data_cell_${idx}`} className='p-0 m-0 text-left pl-2'>
+            {
+            flexRender(cellContent, {})
+            }
+        </TableCell>
     )
 }

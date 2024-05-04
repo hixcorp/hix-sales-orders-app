@@ -1,10 +1,12 @@
 # db_mgmt.py
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, select, update
+from sqlalchemy import DateTime, create_engine, Column, Integer, String, Boolean, func, select, update
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import os
 
 from utils import get_base_directory
+
+from settings import *
 
 Base = declarative_base()
 
@@ -20,6 +22,7 @@ class UserInput(Base):
     additional_info = Column(String, default="")
     action = Column(String, default="")
     action_owner = Column(String, default="")
+    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 class SavedDatabase(Base):
     __tablename__ = 'saved_databases'
