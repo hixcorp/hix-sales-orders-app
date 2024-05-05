@@ -47,10 +47,11 @@ class DatabaseChangeResponse(BaseModel):
 # Pydantic models
 class UserInputBase(BaseModel):
     id: str
-    additional_info: str = ""
-    action: str = ""
-    action_owner: str = ""
+    additional_info: Optional[str] = None
+    action: Optional[str] = None
+    action_owner: Optional[str] = None
     last_updated: Optional[datetime] = None
+    updated_by: Optional[str]= None
 
 
 class UserInputCreate(UserInputBase):
@@ -61,10 +62,11 @@ class UserInputUpdate(UserInputBase):
 
 class UserInputPartialUpdate(BaseModel):
     id: str
-    additional_info: str = None
-    action: str = None
-    action_owner: str = None
+    additional_info: Optional[str] = None
+    action: Optional[str] = None
+    action_owner: Optional[str] = None
     last_updated: Optional[datetime] = None
+    updated_by: Optional[str] = None
 
 @app.middleware("http")
 async def add_custom_headers(request: Request, call_next):
@@ -76,6 +78,14 @@ async def add_custom_headers(request: Request, call_next):
 @app.get('/all_items')
 async def all_items():
     response = get_all_items()
+    if response['data']:
+        return JSONResponse(status_code=200, content=response)
+    else:
+        raise HTTPException(status_code=404, detail='No items found')
+
+@app.get('/all_items/no_cache')
+async def all_items_no_cache():
+    response = get_all_items(use_cached=False)
     if response['data']:
         return JSONResponse(status_code=200, content=response)
     else:
@@ -106,6 +116,8 @@ def update_user_input_by_id(user_input: UserInputUpdate, db: Session = Depends(g
             # If not found, create a new record
             obj = UserInput(**user_input.model_dump())
             db.add(obj)
+            db.commit()
+            obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         else:
             for var, value in user_input.model_dump().items():
                 setattr(obj, var, value)
@@ -126,6 +138,8 @@ def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: Session
             data = user_input.model_dump(exclude_none=True)
             obj = UserInput(**data)
             db.add(obj)
+            db.commit()
+            obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         else:
             data = user_input.model_dump(exclude_none=True)
             for key, value in data.items():
@@ -149,6 +163,34 @@ def get_local_database(local_engine: Engine = Depends(get_local_db_engine)):
 @app.get("/using_default_database")
 def using_default_database(current_engine: Engine = Depends(get_current_db_engine), local_engine: Engine = Depends(get_local_db_engine)):
     return {"using_default": str(current_engine.url) == str(local_engine.url)}
+
+@app.get("/use_default_database")
+def use_default_database(db: Session = Depends(get_local_db)):
+    local_db = db.query(SavedDatabase).filter(SavedDatabase.name == 'Local Database').first()
+
+    #  First set all to not preferred
+    db.query(SavedDatabase).update({SavedDatabase.preferred: False})
+    # Then set the current one to preferred
+    local_db.preferred = True
+    db.commit()
+
+    # Update the current engine and session
+    update_current_database(local_db)
+    return {"message": "Database updated successfully", "data": local_db}
+
+@app.get("/use_preferred_database")
+def use_default_database(db: Session = Depends(get_local_db)):
+    preferred_db = db.query(SavedDatabase).filter(SavedDatabase.preferred == True).first()
+
+    #  First set all to not preferred
+    db.query(SavedDatabase).update({SavedDatabase.preferred: False})
+    # Then set the current one to preferred
+    preferred_db.preferred = True
+    db.commit()
+
+    # Update the current engine and session
+    update_current_database(preferred_db)
+    return {"message": "Database updated successfully", "data": preferred_db}
 
 @app.get("/process_id")
 def process_id():
@@ -183,6 +225,11 @@ def add_preferred_database(new_entry: DatabaseLocation, db: Session = Depends(ge
             preferred=True
         )
         db.add(database_to_use)
+    
+    #  First set all to not preferred
+    db.query(SavedDatabase).update({SavedDatabase.preferred: False})
+    # Then set the current one to preferred
+    database_to_use.preferred = True
     db.commit()
 
     # Update the current engine and session
@@ -196,13 +243,16 @@ def validate_new_location(new_location:str, location_type:str):
                 raise HTTPException(status_code=400, detail='Invalid file path')
             if not new_location.endswith('.db'):
                 raise HTTPException(status_code=400, detail='Database file must have a valid .db extension')
+            if not new_location.startswith('sqlite:///'):
+                new_location = f'sqlite:///{new_location}'
             return new_location
         case 'folder':
             if not os.path.isdir(new_location):
                 raise HTTPException(status_code=400, detail="Invalid database path")
             if not os.path.exists(new_location):
                 os.path.makedirs(new_location, exist_ok=True)
-            new_database_path = os.path.join(new_location, DATABASE_NAME)
+            # new_database_path = os.path.join(new_location, DATABASE_NAME)
+            new_database_path = f'sqlite:///{os.path.join(new_location,DATABASE_NAME)}'
 
             return new_database_path
         case 'url':
@@ -221,11 +271,11 @@ class UpdateItemSettings(BaseModel):
     items: list[ItemSettingsUpdate]
 
 @app.get("/get_all_item_settings", response_model=List[ItemSettingsUpdate])
-def get_all_item_settings(db: Session = Depends(get_local_db)):
+def get_all_item_settings(db: Session = Depends(get_current_db)):
     return db.query(ItemSettings).all()
 
 @app.post("/get_item_settings_by_column_names")
-def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = Depends(get_local_db)):
+def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = Depends(get_current_db)):
     results = {}
     for name in column_names.column_names:
         setting = db.query(ItemSettings).filter(ItemSettings.column_name == name).first()
@@ -238,7 +288,7 @@ def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = D
     return results
 
 @app.post("/update_item_settings_by_column_names")
-def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Session = Depends(get_local_db)):
+def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Session = Depends(get_current_db)):
     for item in update_items.items:
         try:
             setting = db.query(ItemSettings).filter(ItemSettings.column_name == item.column_name).first()

@@ -22,7 +22,8 @@ class UserInput(Base):
     additional_info = Column(String, default="")
     action = Column(String, default="")
     action_owner = Column(String, default="")
-    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    last_updated = Column(DateTime, default=func.now(), server_default=func.now(), onupdate=func.now())
+    updated_by = Column(String, default="")
 
 class SavedDatabase(Base):
     __tablename__ = 'saved_databases'
@@ -57,7 +58,8 @@ def set_current_database(session):
         if CURRENT_ENGINE != LOCAL_ENGINE:
             CURRENT_ENGINE.dispose()
         CURRENT_ENGINE = create_engine_with_url(preferred_db.path)
-        CURRENT_SESSION = create_sessionmaker(CURRENT_ENGINE)()
+        CURRENT_SESSION = create_sessionmaker(CURRENT_ENGINE)
+        # init_db(CURRENT_ENGINE)
 
 def update_current_database(database_to_use: SavedDatabase):
         # Update the current engine and session
@@ -66,7 +68,9 @@ def update_current_database(database_to_use: SavedDatabase):
         if CURRENT_ENGINE != LOCAL_ENGINE:
             CURRENT_ENGINE.dispose()
         CURRENT_ENGINE = create_engine_with_url(database_to_use.path)
-        CURRENT_SESSION = create_sessionmaker(CURRENT_ENGINE)()
+        CURRENT_SESSION = create_sessionmaker(CURRENT_ENGINE)
+        
+        # init_db(CURRENT_ENGINE)
 
 def get_local_db():
     db = LOCAL_SESSION()
