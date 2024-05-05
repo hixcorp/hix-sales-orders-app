@@ -25,7 +25,12 @@ export const CachedDataNotice = () => {
             </div>
                
             }
-            {snap.sales_data.cached && (snap.sales_data.errors.length === 0) && <h2>Using cached data</h2>}
+            {snap.sales_data.cached && (snap.sales_data.errors.length === 0) && 
+            <div className='flex items-center '>
+              <h2>Using cached data. Refresh with live data: </h2>
+              <Button className='m-3' variant={'secondary'} onClick={()=>{store.fetchData(false)}}><RefreshCw/></Button>
+              </div>
+            }
             
     </>
   )

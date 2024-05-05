@@ -48,7 +48,7 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
         if (!newDBLocation) return;  // Simple check for falsy values
 
         try {
-            const response = await fetch(`${api_url}/change_database_directory`, {
+            const response = await fetch(`${api_url}/add_preferred_database`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',  // This specifies that the body format is JSON

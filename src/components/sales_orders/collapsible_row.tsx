@@ -4,6 +4,7 @@ import { Data, store } from '@/store/sales_data_store';
 import { useSnapshot } from 'valtio';
 import { CircleAlert, CircleX } from 'lucide-react';
 import { flexRender } from '@tanstack/react-table';
+import { UserInputOrder } from '../user_input/user_input_header';
 
 // const order_fields = ['GroupNamereqshipdtweekly1', 'ordno1', 'cusno1', 'billtoname1', 'shiptoname1', 'HoldStatus1'];
 
@@ -38,16 +39,18 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: 
 
   return (
     <>
-      <TableRow onClick={() => setCollapsed(prev => !prev)}
-                className={collapsed ? 'bg-secondary hover:text-primary' : 'bg-accent text-white font-bold hover:text-white hover:bg-primary'}
-                >
-        <TableCell 
-            className='flex flex-col p-0 m-0 text-left pl-2 w-40'
-        >
+      <TableRow 
+        className={collapsed ? 'bg-secondary hover:text-primary' : 'bg-accent text-white font-bold hover:text-white hover:bg-primary'}
+      >
+        <TableCell className='p-0 m-0'>
+          <div className='flex flex-col align-middle jutsify-left items-left p-0 py-1 m-0 text-left pl-2 w-40'
+          >
           {due_this_week}
           {late}
+          </div>
         </TableCell>
-        <RowCells row={rows[0]} show_list={order_fields}/>
+        <RowCells row={rows[0]} show_list={order_fields} onClick={()=> setCollapsed(prev => !prev)}/>
+        <UserInputOrder row={rows[0]}/>
        
       </TableRow>
       {
@@ -65,18 +68,18 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: 
 
 export default CollapsibleRow;
 
-const RowCells = ({row, show_list}: {row:Data, show_list: string[]}) => {
+const RowCells = ({row, show_list, onClick}: {row:Data, show_list: string[], onClick?:React.MouseEventHandler<HTMLTableCellElement>}) => {
 
   return (
     Object.keys(row).map((c: string, i: number) => {          
         return (
-          <RowCell key={`data_cell_${i}`} row={row} c={c} show_list={show_list}/>
+          <RowCell key={`data_cell_${i}`} row={row} c={c} show_list={show_list} onClick={onClick}/>
         );
       })
     )
 }
 
-const RowCell = ({row, c,show_list}:{row:Data, c:string, show_list:string[]}) => {
+const RowCell = ({row, c,show_list, onClick}:{row:Data, c:string, show_list:string[], onClick?:React.MouseEventHandler<HTMLTableCellElement>}) => {
   const snap = useSnapshot(row)
   const snap_store = useSnapshot(store)
   
@@ -89,9 +92,8 @@ const RowCell = ({row, c,show_list}:{row:Data, c:string, show_list:string[]}) =>
     const value = String(snap[c]);
     cellContent = isISODateString(value) ? formatDate(value) : value.replaceAll('>', '/n');
   }
-
   return (
-    <TableCell className='p-0 m-0 text-left pl-2'>
+    <TableCell className={`p-0 m-0 text-left pl-2 ${onClick ? 'hover:cursor-pointer' :'' }`} onClick={onClick}>
       {
         flexRender(cellContent, {})
         }

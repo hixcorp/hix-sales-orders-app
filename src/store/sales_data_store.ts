@@ -27,10 +27,19 @@ export type ColumnSettings = {
     display_name: string,
 };
 
+export type UserInput = {
+    action: string, 
+    action_owner: string, 
+    additional_info: string
+    id: string
+    last_updated: string
+    updated_by: string
+}
 
 export interface Store {
     sales_data: SalesData;
     sales_settings: Settings;
+    user_input: UserInput[];
     loading: boolean;
     editing: boolean;
     table_view: string,
@@ -38,12 +47,13 @@ export interface Store {
     fetch_errors: string;
     orders_due_this_week: string[];
     orders_past_due: string[];
-    fetchData: () => Promise<void>;
+    fetchData: (cached_ok?:boolean) => Promise<void>;
     fetchSettings: () => Promise<void>;
     updateSettings: (newSettings: Settings) => void;
     postSettings: () => Promise<void>;
 }
 
+const defaultUserInput: UserInput[] = []
 
 const defaultSalesData: SalesData = {
     data: [],
@@ -58,6 +68,7 @@ const defaultSettings: Settings = {}
 export const store = proxy<Store>({
     sales_data: defaultSalesData,
     sales_settings: defaultSettings,
+    user_input: defaultUserInput,
     loading: false,
     editing: false,
     table_view: 'order',
@@ -65,10 +76,13 @@ export const store = proxy<Store>({
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
-    fetchData: async () => {
+    fetchData: async (cached_ok?:boolean) => {
+        if (cached_ok === undefined) cached_ok = true
         store.loading = true;
         try {
-            const response = await fetch(`${api_url}/all_items`);
+            let endpoint = `${api_url}/all_items`
+            if (!cached_ok) endpoint += "/no_cache"
+            const response = await fetch(endpoint);
             const new_sales_data: SalesData = await response.json();
             store.sales_data = Object.assign(store.sales_data, new_sales_data);
             calculate_statistics()

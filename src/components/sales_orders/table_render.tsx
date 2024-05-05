@@ -7,6 +7,7 @@ import { EditSalesSettings } from './edit_sales_settings';
 import ItemView from './item_view';
 import OrderView from './order_view';
 import { flexRender } from '@tanstack/react-table';
+import UserInputHeader from '../user_input/user_input_header';
 
 export default function TableRender() {
     const snap = useSnapshot(store);
@@ -14,8 +15,9 @@ export default function TableRender() {
         <>
             <TableHeader >
                 <TableRow className='text-[13px] font-extrabold align-left text-left'>
-                    <TableHead className='sticky top-0 px-1 bg-secondary'>Alerts</TableHead>
+                    <TableHead className='sticky top-0 px-1 bg-secondary text-inherit font-inherit'>Alerts</TableHead>
                     <HeaderCells/>
+                    <UserInputHeader/>
                 </TableRow>
                 {snap.editing && <EditSalesSettings />}
             </TableHeader>
