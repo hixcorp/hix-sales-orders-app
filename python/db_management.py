@@ -16,13 +16,16 @@ LOCAL_DATABASE = f'sqlite:///{os.path.join(BASE_DIR,DATABASE_NAME)}'
 
 global LOCAL_ENGINE, LOCAL_SESSION, CURRENT_ENGINE, CURRENT_SESSION
 
+timenow = lambda: func.now().op('AT TIME ZONE')('UTC')
+
 class UserInput(Base):
     __tablename__ = 'user_input'
     id = Column(String, primary_key=True, default="")
+    order_status = Column(String, default="")
     additional_info = Column(String, default="")
     action = Column(String, default="")
     action_owner = Column(String, default="")
-    last_updated = Column(DateTime, default=func.now(), server_default=func.now(), onupdate=func.now())
+    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
     updated_by = Column(String, default="")
 
 class SavedDatabase(Base):

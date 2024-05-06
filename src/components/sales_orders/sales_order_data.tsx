@@ -26,7 +26,7 @@ const SalesOrderData: React.FC = () => {
             </div>
            
             <div className='border overflow-auto w-full'>
-            <Table className='border overflow-auto text-[9px] p-[0px] m-[0px] text-left align-left'>
+            <Table className='border overflow-auto text-xs p-[0px] m-[0px] text-left align-left'>
                 <TableRender/>
             </Table>
             </div>

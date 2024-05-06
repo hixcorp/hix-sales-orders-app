@@ -5,7 +5,7 @@ import {  Data, store } from '@/store/sales_data_store';
 import { TableRow, TableCell } from "@/components/ui/table";
 import { CircleAlert, CircleX } from 'lucide-react';
 import { flexRender } from '@tanstack/react-table';
-import { formatDate, isISODateString } from './collapsible_row';
+import { formatDate, getAlerts, isISODateString } from './collapsible_row';
 
 export default function ItemView() {
     const snap = useSnapshot(store);
@@ -41,7 +41,7 @@ export const ItemRow = ({ordno, row, bg}:{ordno:string | number, row:Data, bg:bo
     
     return(
         <TableRow  className={`p-0 ${bg ? 'bg-secondary' : ''}`}>
-            <TableCell className='flex p-0 pl-2 flex flex-col w-40'>{due_this_week}{late}</TableCell>
+            {/* <TableCell className='flex p-0 pl-2 flex flex-col w-40'>{due_this_week}{late}</TableCell> */}
             {Object.keys(snap).map((key:string,i:number)=>{
 
                 return(
@@ -62,8 +62,35 @@ const ItemCell = ({row, item_key, idx}:{row:Data, item_key:string, idx:number}) 
     if (!snap_store.editing && c_settings?.hidden) return<></>
 
     const value = String(snap[item_key]);
-    const cellContent = isISODateString(value) ? formatDate(value) : value.replaceAll('>', '/n');
+    let cellContent: React.ReactNode = isISODateString(value) ? formatDate(value) : value.replaceAll('>', '/n');
 
+    
+    //Extra formatting
+    let classname = 'flex items-center gap-1'
+    let extras:React.ReactNode[] = []
+
+    if (item_key === 'shipping_dt'){
+      const {past_due, due_this_week} = getAlerts(snap[item_key])
+      
+      const past = past_due ? <CircleX className='text-destructive' />: <></>
+      const week = due_this_week ? <CircleAlert className='text-yellow-500' />: <></>
+      let color = due_this_week ? 'text-yellow-500' : ''
+      color = past_due ? 'text-destructive' : color
+      
+      let font = color? 'font-bold text-xs' : ''
+
+      classname = `${classname} ${color} ${font}`
+      extras.push(past)
+      extras.push(week)
+    }
+
+    if (item_key==='ord_no') {
+      classname = `${classname} font-extrabold text-sm`
+    }  
+    const extra_ui = extras.map((e:React.ReactNode)=>e)
+
+    cellContent = <div className={classname}>{extra_ui}{cellContent}</div>
+  
     
     return(
         <TableCell key={`data_cell_${idx}`} className='p-0 m-0 text-left pl-2'>

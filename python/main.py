@@ -47,12 +47,12 @@ class DatabaseChangeResponse(BaseModel):
 # Pydantic models
 class UserInputBase(BaseModel):
     id: str
-    additional_info: Optional[str] = None
-    action: Optional[str] = None
-    action_owner: Optional[str] = None
+    order_status: str = ''
+    additional_info: str = ''
+    action: str = ''
+    action_owner: str = ''
     last_updated: Optional[datetime] = None
-    updated_by: Optional[str]= None
-
+    updated_by: str= ''
 
 class UserInputCreate(UserInputBase):
     pass
@@ -62,6 +62,7 @@ class UserInputUpdate(UserInputBase):
 
 class UserInputPartialUpdate(BaseModel):
     id: str
+    order_status: Optional[str] = ''
     additional_info: Optional[str] = None
     action: Optional[str] = None
     action_owner: Optional[str] = None
@@ -135,22 +136,21 @@ def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: Session
         obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         if obj is None:
             # If not found, create a new record
-            data = user_input.model_dump(exclude_none=True)
+            data = user_input.model_dump(exclude_unset=True, exclude_none=True)
             obj = UserInput(**data)
             db.add(obj)
-            db.commit()
-            obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         else:
-            data = user_input.model_dump(exclude_none=True)
+            data = user_input.model_dump(exclude_unset=True, exclude_none=True)
             for key, value in data.items():
                 setattr(obj, key, value)
         db.commit()
+        db.refresh(obj)  # Ensure the object is refreshed and still connected
         return obj
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Data update failed")
-    finally:
-        db.close()
+        raise HTTPException(status_code=400, detail="Data update failed: " + str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An error occurred: " + str(e))
 
 @app.get("/current_database")
 def get_current_database(current_engine: Engine = Depends(get_current_db_engine)):

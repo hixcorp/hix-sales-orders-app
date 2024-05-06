@@ -15,9 +15,9 @@ export default function TableRender() {
         <>
             <TableHeader >
                 <TableRow className='text-[13px] font-extrabold align-left text-left'>
-                    <TableHead className='sticky top-0 px-1 bg-secondary text-inherit font-inherit'>Alerts</TableHead>
+                    {snap.table_view === 'order' && <TableHead className='sticky top-0 px-1 bg-secondary text-inherit font-extrabold'>Status</TableHead>}
                     <HeaderCells/>
-                    <UserInputHeader/>
+                    {snap.table_view==='order' && <UserInputHeader/>}
                 </TableRow>
                 {snap.editing && <EditSalesSettings />}
             </TableHeader>

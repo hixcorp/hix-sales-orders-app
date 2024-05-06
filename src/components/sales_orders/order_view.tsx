@@ -32,7 +32,7 @@ export default function OrderView() {
                     current_order = String(ordno);
                     bg = !bg;
                 }
-                return <CollapsibleRow key={ordno} ordno={String(ordno)} rows={groupedData[idx].orders} bg={bg}/>
+                return <CollapsibleRow key={`order_collapse_${ordno}`} ordno={String(ordno)} rows={groupedData[idx].orders} bg={bg}/>
             })}
         </>
     );

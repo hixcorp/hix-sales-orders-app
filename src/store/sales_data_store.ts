@@ -1,4 +1,3 @@
-// salesStore.ts
 import { proxy, snapshot } from 'valtio';
 import { api_url } from '@/lib/utils';
 
@@ -28,10 +27,11 @@ export type ColumnSettings = {
 };
 
 export type UserInput = {
+    id: string
+    order_status: string
     action: string, 
     action_owner: string, 
     additional_info: string
-    id: string
     last_updated: string
     updated_by: string
 }
@@ -42,6 +42,7 @@ export interface Store {
     user_input: UserInput[];
     loading: boolean;
     editing: boolean;
+    progress: string;
     table_view: string,
     expand_all: boolean,
     fetch_errors: string;
@@ -71,12 +72,14 @@ export const store = proxy<Store>({
     user_input: defaultUserInput,
     loading: false,
     editing: false,
+    progress: '',
     table_view: 'order',
     expand_all: true,
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
     fetchData: async (cached_ok?:boolean) => {
+        store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
         store.loading = true;
         try {
@@ -86,15 +89,16 @@ export const store = proxy<Store>({
             const new_sales_data: SalesData = await response.json();
             store.sales_data = Object.assign(store.sales_data, new_sales_data);
             calculate_statistics()
-            console.log({store})
         } catch (error) {
             console.error(error);
             store.fetch_errors = 'An error occurred while trying to fetch data';
         }
         store.loading = false;
+        store.progress = ''
     },
     fetchSettings: async () => {
         // store.loading = true;
+        store.progress = 'Loading column settings'
         try {
             const column_names = {column_names: Object.keys(store.sales_data.data[0])}
             console.log({data_columns: column_names, json:JSON.stringify(column_names)})
@@ -115,6 +119,7 @@ export const store = proxy<Store>({
             store.fetch_errors = 'An error occurred while trying to update settings';
         }
         // store.loading = false;
+        store.progress = ''
         
     },
     updateSettings: (newSettings: Settings) => {
@@ -122,6 +127,7 @@ export const store = proxy<Store>({
     },
     postSettings: async () => {
         store.loading = true;
+        store.progress = 'Saving column settings'
         const settings_to_update = {items: Object.values(snapshot(store.sales_settings))}
         try {
             const response = await fetch(`${api_url}/update_item_settings_by_column_names`, {
@@ -138,6 +144,7 @@ export const store = proxy<Store>({
             store.fetch_errors = 'An error occurred while trying to update settings';
         }
         store.loading = false;
+        store.progress = ''
     }
 });
 
@@ -165,7 +172,5 @@ function calculate_statistics() {
 }
 
 store.fetchData().then(res => {
-    console.log({res})
     store.fetchSettings().then(res => console.log({store}))
-    
 })
