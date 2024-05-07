@@ -1,11 +1,10 @@
+import { UserAccountNav } from "@/components/auth/use-login";
+import { Navigation } from "@/components/layout/navigation";
+import { getCurrentUser } from "@/lib/session";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 
 import Image from "next/image";
-import clsx from "clsx";
-
+import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "HIX Sales Orders App",
@@ -17,6 +16,10 @@ export default async function HomeLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser()
+    if (!user) {
+    return notFound()
+  }
   return (
       <>
           <div className='absolute inset-0 min-h-screen min-w-screen max-w-full h-full p-5 flex flex-col max-h-screen '>
@@ -40,8 +43,10 @@ export default async function HomeLayout({
                     />
                   </a>
                 </div>
-                
-                <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
+               <div className="flex items-center gap-8">
+               <Navigation/> 
+               <UserAccountNav user={user}/>
+               </div>
             </div>
                 {children}
           </div>

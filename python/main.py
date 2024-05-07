@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, DirectoryPath
 from sqlalchemy import Engine
@@ -15,7 +15,7 @@ import utils
 import os
 from mssql import get_all_items
 
-from db_management import DATABASE_NAME, SavedDatabase, UserInput, get_current_db, get_local_db, get_local_db_engine, get_current_db_engine, set_current_database, start_db, update_current_database
+from db_management import DATABASE_NAME, AllowedInput, SavedDatabase, UserInput, get_current_db, get_local_db, get_local_db_engine, get_current_db_engine, set_current_database, start_db, update_current_database
 from fastapi import Depends
 
 app = FastAPI()
@@ -36,7 +36,7 @@ TEMP_DIR = os.path.join(BASE_DIR,'temp')
 Base = declarative_base()
 
 class DatabaseLocation(BaseModel):
-    new_location: DirectoryPath
+    new_location: DirectoryPath | str
     location_type: str
     name: Optional[str] = ""
 
@@ -305,6 +305,32 @@ def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Se
             setting.display_name = item.display_name
         db.commit()
     return {"message" : "Item settings updated successfully"}
+
+@app.get("/allowed_inputs/{input_type}")
+def get_allowed_inputs(input_type: str, db: Session = Depends(get_current_db)):
+    allowed_inputs = db.query(AllowedInput).filter(AllowedInput.type == input_type).all()
+    if not allowed_inputs:
+        raise HTTPException(status_code=404, detail="No entries found for the given type")
+    return allowed_inputs
+
+@app.post("/allowed_inputs/{input_type}")
+def add_allowed_input(input_type: str, value: str = Query(...), db: Session = Depends(get_current_db)):
+    existing_input = db.query(AllowedInput).filter(AllowedInput.type == input_type, AllowedInput.value == value).first()
+    if existing_input:
+        raise HTTPException(status_code=400, detail="This value already exists for the given type")
+    new_input = AllowedInput(type=input_type, value=value)
+    db.add(new_input)
+    db.commit()
+    return {"message": "New value added successfully", "data": new_input}
+
+@app.delete("/allowed_inputs/{input_type}/{value_id}")
+def delete_allowed_input(input_type: str, value_id: int, db: Session = Depends(get_current_db)):
+    input_to_delete = db.query(AllowedInput).filter(AllowedInput.id == value_id, AllowedInput.type == input_type).first()
+    if not input_to_delete:
+        raise HTTPException(status_code=404, detail="No entry found with the given ID and type")
+    db.delete(input_to_delete)
+    db.commit()
+    return {"message": "Value deleted successfully"}
 
 if __name__ == "__main__":
     if not os.path.exists(TEMP_DIR):

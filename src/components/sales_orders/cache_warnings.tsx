@@ -7,8 +7,8 @@ import { RefreshCw } from 'lucide-react'
 
 export const CachedDataNotice = () => {
     const snap = useSnapshot(store)
-
-    if (!snap.loading && !snap.sales_data || !Object.keys(snap.sales_data.data).length) {
+  if (snap.loading) return <></>
+    if (!snap.sales_data || !Object.keys(snap.sales_data.data).length) {
         return <h1 className='flex justify-center text-xl text-red-600'>
             No sales data found in database. Check the network connection and try again.
             </h1>;

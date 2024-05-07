@@ -15,6 +15,7 @@ const SettingsDrawer = (
     {children}:{children:React.ReactNode}
 ) => {
     return(
+        
         <Drawer >
             <DrawerTrigger asChild>
                     <Button className="p-1 py-3 color-gray-400 hover:text-white hover:fond-bold" variant="outline"><Settings/> Open Settings</Button>

@@ -1,34 +1,37 @@
 
-import { Button } from "@/components/ui/button"
-import FileInputXML from "./file_input_xml"
+// import { Button } from "@/components/ui/button"
+// import FileInputXML from "./file_input_xml"
 import SalesOrderData from "./sales_orders/sales_order_data"
 import { Suspense } from "react"
 import ChangeDatabaseDirectory from "./change_db_dir"
 import SettingsDrawer from "./sales_drawer"
 import { CachedDataNotice } from "./sales_orders/cache_warnings"
+import { Spinner } from "./ui/spinner"
 
 export default function Home() {
   return (
 
       <>
-      <header className=" h-auto bg-gray-100 dark:bg-gray-800 p-4 md:p-6 flex items-center justify-between">
+      <header className=" h-auto p-2 md:p-4 flex items-center justify-between">
         {/* <FileInputXML/> */}
-        <div className="flex flex-col items-center gap-4">
-           {/* <Button size="sm" variant="outline">
+        {/* <div className="flex flex-col items-center gap-4">
+          <Button size="sm" variant="outline">
             <UploadIcon className="h-5 w-5 mr-2" />
             Upload Initial .xlsx
-          </Button> */}
+          </Button> 
           
-        </div>
-
+        </div> */}
+        <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
       </header>
-        <CachedDataNotice/>
         <Suspense fallback={"Loading..."}>
+            <CachedDataNotice/>
             <SalesOrderData />
         </Suspense>
         <div className="p-2 w-full">
         <SettingsDrawer>
+          <Suspense fallback={<Spinner size={'large'}/>}>
             <ChangeDatabaseDirectory button_label="Change Database Location"/>
+          </Suspense>
         </SettingsDrawer>
         </div>
         

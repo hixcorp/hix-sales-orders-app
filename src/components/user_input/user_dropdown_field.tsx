@@ -2,64 +2,51 @@
 'use client'
 import React, { useState } from 'react'
 import { TableCell } from '@/components/ui/table'
-import { Data, store } from '@/store/sales_data_store'
-import { Input } from '../ui/input'
+import { AllowedValue, Data, store } from '@/store/sales_data_store'
+
 import { flexRender } from '@tanstack/react-table'
-import { api_url } from '@/lib/utils'
+import { api_url, cn } from '@/lib/utils'
 import { UserInput } from '@/store/sales_data_store'
 import { Spinner } from '@/components/ui/spinner'
 import { useSnapshot } from 'valtio'
 import HoverTooltip from '../tooltip'
-import { useSession } from 'next-auth/react'
-import { Session } from 'next-auth'
 
-export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInput }) => {
+import { ComboboxCell } from './combobox_input'
+import { Session } from 'next-auth'
+import { useSession } from 'next-auth/react'
+
+export const UserDropdownField = ({ row, field, label }: { row: Data, field: keyof UserInput, label?:string }) => {
     const snap = useSnapshot(store.user_input)
+    const snap_store = useSnapshot(store)
     const [loading, setLoading] = useState(false);
     const [updateError, setUpdateError] = useState(false)
     const current_user = useSession().data
+
     const row_input = snap.find(u_in => u_in.id === row.ord_no)
 
     const tooltip = row_input ? 
-    `Status fields last updated on ${formatDate(row_input.last_updated)}${row_input.updated_by ? 'by ' + row_input.updated_by: ''}` 
+    `Status fields last updated on ${formatDate(row_input.last_updated)}${row_input.updated_by ? ' by ' + row_input.updated_by: ''}` 
     : ''
 
-    const handleChanges = async (e: React.FormEvent<HTMLInputElement>) => {
-        // Stop form submission from refreshing the page
-        e.preventDefault();
-        const textareaValue = e.currentTarget.value;
+    const handleChanges = async (selected: string) => {
+        const selectedValue = selected;
         
         const row_input = store.user_input.find(u_in => u_in.id === row.ord_no);
         // Don't make any network requests if no changes are made
-        if ((textareaValue !== row_input?.[field]) && !(!!!textareaValue && !row_input)) {
-            console.log({textareaValue,row_input,textFalse:!textareaValue, rowFalse:!row_input})
-           updateUserInput({[field]:textareaValue},setLoading, setUpdateError,row, current_user)
+        if ((selectedValue !== row_input?.[field]) && !(!!!selectedValue && !row_input)) {
+            console.log({textareaValue: selectedValue,row_input,textFalse:!selectedValue, rowFalse:!row_input})
+           updateUserInput({[field]:selectedValue},setLoading, setUpdateError,row, current_user)
         }
     }
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleChanges(e as unknown as React.FormEvent<HTMLInputElement>);
-        }
-    };
-
-    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        handleChanges(e as unknown as React.FormEvent<HTMLInputElement>);
-    };
-
     return (
-        <TableCell className='p-0 m-0'>
+        <TableCell className='p-0 m-0 text-secondary-foreground'>
             {flexRender(
                 <>
                 <HoverTooltip content={tooltip} className='flex items-center gap-1 p-1'>
-                    <Input 
-                        id={`${row.ord_no}_${field}`} 
-                        name='action' 
-                        className='text-primary text-xs font-normal min-w-[15ch]' 
-                        onKeyDown={handleKeyDown}
-                        onBlur={handleBlur}
-                        defaultValue={row_input?.[field]}
-                    />
+                    
+                    <ComboboxCell field={field} val={""} handleSelect={handleChanges} label={label}/>
+
                     {loading && <Spinner size={'small'} />}
                 </HoverTooltip>
                 {updateError && <div className='text-xs text-destructive'>An error occured, could not update</div>}
@@ -77,9 +64,15 @@ export const formatDate = (str:string) => {
     }
 
 export const updateUserInput = async (
-new_data: { [key: string]: string | number | Date} , setLoading: (loading: boolean) => void, setError: (loading: boolean) => void, row: Data, current_user: Session | null) => {
+    new_data: {[key:string]: string | number | Date},
+    setLoading:(loading:boolean)=>void, 
+    setError:(loading:boolean)=>void, 
+    row:Data,
+    current_user?: Session | null
+) => {
     const row_input = store.user_input.find(u_in => u_in.id === row.ord_no)
     
+    console.log({current_user})
     setLoading(true)
     setError(false)
     const date = new Date()
@@ -90,7 +83,6 @@ new_data: { [key: string]: string | number | Date} , setLoading: (loading: boole
                 },
         body: JSON.stringify({
             id: row.ord_no,
-            // additional_info: textareaValue,
             last_updated: Date.parse(date.toUTCString()),
             updated_by: current_user?.user?.name,
             ...new_data

@@ -10,20 +10,23 @@ import {ColumnSettings} from '@/store/sales_data_store'
 export const EditSalesSettings = () => {
   const columns = Object.keys(store.sales_data.data[0])
   return (
-    <TableRow className='sticky top-0 py-2'>
-      <TableCell></TableCell>
+    <TableRow className='sticky top-0 py-2 '>
+      <TableCell className='bg-secondary sticky top-11 border-b-2 border-primary'></TableCell>
       {columns.map((c,i) =>
         {
           return <EditCell key={`${c}_${i}`} c={c} />
       }
       )}
+      <TableCell className='bg-secondary sticky top-11 border-b-2 border-primary'></TableCell>
+      <TableCell className='bg-secondary sticky top-11 border-b-2 border-primary'></TableCell>
+      <TableCell className='bg-secondary sticky top-11 border-b-2 border-primary'></TableCell>
     </TableRow>
   );
 };
 
 const EditCell = ({c}:{c:string}) => {
   return(
-        <TableCell className='sticky top-11 bg-secondary items-center text-left align-center p-0 m-0 pl-2 pb-2'>
+        <TableCell className='sticky top-11 bg-secondary border-b-2 border-primary items-center text-left align-center p-0 m-0 pl-2 pb-2'>
           <Hidden c={c}/>
           <ColumnName c={c} />
           

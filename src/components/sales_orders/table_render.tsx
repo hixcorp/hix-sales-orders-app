@@ -13,9 +13,9 @@ export default function TableRender() {
     const snap = useSnapshot(store);
     return (
         <>
-            <TableHeader >
-                <TableRow className='text-[13px] font-extrabold align-left text-left'>
-                    {snap.table_view === 'order' && <TableHead className='sticky top-0 px-1 bg-secondary text-inherit font-extrabold'>Status</TableHead>}
+            <TableHeader className='p-0 m-0'>
+                <TableRow className='text-[13px] font-extrabold align-left text-left p-0 m-0 bg-primary hover:bg-primary text-white'>
+                    {snap.table_view === 'order' && <TableHead className='sticky top-0 px-1 font-extrabold bg-primary text-white'>Status</TableHead>}
                     <HeaderCells/>
                     {snap.table_view==='order' && <UserInputHeader/>}
                 </TableRow>
@@ -46,7 +46,7 @@ const HeadCell = ({c}:{c: string}) => {
     if (!snap_store.editing && !!c_settings && c_settings.hidden) return <></>
 
     return (
-        <TableCell className='sticky top-0 px-1 bg-secondary'>
+        <TableCell className='sticky top-0 px-1 bg-primary'>
             {flexRender(c_settings?.display_name || c, {})}
         </TableCell>
     )

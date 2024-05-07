@@ -5,6 +5,7 @@ import { store } from '../../store/sales_data_store';
 import {  Table } from "@/components/ui/table"
 import { Button } from '@/components/ui/button'
 import TableRender from './table_render';
+import { ComboboxCell } from '../user_input/combobox_input';
 
 const SalesOrderData: React.FC = () => {
     const snap = useSnapshot(store);
@@ -15,8 +16,8 @@ const SalesOrderData: React.FC = () => {
     
     return (
         <>
-            <div className='flex justify-between align-center items-center bg-secondary'>
-                <div className='flex gap-4 p-2 font-bold items-center'>
+            <div className='p-0 m-0 flex justify-between align-center items-center'>
+                <div className='flex gap-4 p-0 m-0 font-bold items-center'>
                     <span className='flex'>Total Items: <div className='px-2 text-blue-600'>{snap.sales_data.data.length}</div></span>
                     <span className='flex'>Total Orders: <div className='px-2 text-blue-600'>{uniqueOrders.size}</div></span>
                     <span className='flex'>Total Orders Due this Week: <div className='px-2 text-blue-600'>{snap.orders_due_this_week.length}</div></span>
@@ -26,7 +27,7 @@ const SalesOrderData: React.FC = () => {
             </div>
            
             <div className='border overflow-auto w-full'>
-            <Table className='border overflow-auto text-xs p-[0px] m-[0px] text-left align-left'>
+            <Table className='border overflow-auto text-xs p-0 m-0 text-left align-left'>
                 <TableRender/>
             </Table>
             </div>
@@ -61,6 +62,7 @@ const ActionButtons = () => {
 return(                
     <>
         <div className='flex gap-1'>
+            
             <Button className='m-0 h-8' onClick={toggleViewMode}>{snap.table_view === 'item' ? 'Switch to Order View' : 'Switch to Item View'}</Button>
             {snap.table_view === 'order' && <Button className='m-0 h-8' onClick={toggleExpandAll}>{snap.expand_all ? 'Collapse All' : 'Expand All'}</Button>}
         </div>

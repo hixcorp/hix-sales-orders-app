@@ -25,14 +25,9 @@ export default function AuthenticationPage() {
           <Image src="/hixcorp_logo.png" height={100} width={300} alt="HIX Corporation" />
         </div>
           <div className="relative z-20 mt-auto flex items-end">
-          
-          <Image src={"/cloud_hixblue.svg"} height={75} width={75} alt=''/>
-          
-          
               <p className="text-sm pb-4">
-                Welcome to HIX Cloud, © HIX Corporation, 2024
+                Welcome to HIX, © HIX Corporation, 2024
               </p>
-            
         </div>
       </div>
       <div className="p-4 lg:p-8 h-full flex items-center">
@@ -43,30 +38,11 @@ export default function AuthenticationPage() {
           <Image className='lg:hidden' src="/hixcorp_logo.png" height={50} width={150} alt="HIX Corporation" />
             
             <h1 className="text-2xl font-semibold tracking-tight">
-              Sign in to HIX Cloud
+              Sign in to HIX
             </h1>
-            {/* <p className="text-sm text-muted-foreground">
-              Enter your email below to sign in or create your account
-            </p> */}
           </div>
           <UserAuthForm />
-          {/* <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{" "}
-            <Link
-              href="/terms"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/privacy"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </p> */}
+
         </div>
       </div>
     </div>

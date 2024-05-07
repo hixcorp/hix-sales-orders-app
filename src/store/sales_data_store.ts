@@ -48,10 +48,18 @@ export interface Store {
     fetch_errors: string;
     orders_due_this_week: string[];
     orders_past_due: string[];
+    allowed_values: {[key:string]:AllowedValue[]}
     fetchData: (cached_ok?:boolean) => Promise<void>;
     fetchSettings: () => Promise<void>;
     updateSettings: (newSettings: Settings) => void;
     postSettings: () => Promise<void>;
+    getAllowedValues: (field:string) => Promise<AllowedValue[]>;
+}
+
+export type AllowedValue = {
+    id: number,
+    type:string,
+    value: string,
 }
 
 const defaultUserInput: UserInput[] = []
@@ -78,6 +86,7 @@ export const store = proxy<Store>({
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
+    allowed_values: {},
     fetchData: async (cached_ok?:boolean) => {
         store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
@@ -145,6 +154,24 @@ export const store = proxy<Store>({
         }
         store.loading = false;
         store.progress = ''
+    },
+    getAllowedValues: async (field:string)=>{
+        let result:AllowedValue[]=[]
+        try{
+            const res = await fetch(`${api_url}/allowed_inputs/${field}`)
+            if (res.ok){
+                const allowed_values: AllowedValue[] = await res.json()
+                console.log({allowed_values})
+                return allowed_values
+            }
+            else {
+                return result
+            }
+        }catch(err){
+            console.warn({err})
+           
+            return result
+        }
     }
 });
 
