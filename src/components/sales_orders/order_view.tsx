@@ -1,6 +1,7 @@
 'use client'
 import { Data, store } from '@/store/sales_data_store';
 import CollapsibleRow from './collapsible_row';
+import { useSnapshot } from 'valtio';
 
 type GroupedData = {
     [key:number|string] : {order_no: string | number, orders: Data[]}
@@ -9,7 +10,10 @@ type GroupedData = {
 export default function OrderView() {
    
     // Group data by order number keeping the same list order in original data list
-    const groupedData = store.sales_data.data.reduce((acc:GroupedData, row, index) => {
+    const snap = useSnapshot(store)
+    const source_data = snap.sales_data && snap.sales_data.filtered_data.length > 0 ? store.sales_data.filtered_data : store.sales_data.data
+    
+    const groupedData = source_data.reduce((acc:GroupedData, row, index) => {
     const ordNo = row?.ord_no;
     if (!Object.values(acc).some(group => group.order_no === ordNo)) {
         // Only create a new group if one doesn't already exist for this order_no

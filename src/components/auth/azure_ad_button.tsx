@@ -20,7 +20,7 @@ export default function AzureADSignInButton() {
 
   return (
     <Button
-      className="w-full flex gap-2"
+      className="w-full flex gap-2 bg-accent text-accent-foreground hover:bg-accent/80"
       variant="outline"
       type="button"
       onClick={handleLogin}

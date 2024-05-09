@@ -71,7 +71,7 @@ def get_all_items(use_cached:bool=True):
     global conn_str
     database_file = 'MSSQL_output.db'
 
-    if use_cached and not utils.cache_expired(time_delta=1.0, db_filename=database_file):
+    if use_cached and not utils.cache_expired(time_delta=0.10, db_filename=database_file):
         cached_data = get_all_cached_items(database_file)
         return cached_data
     # Execute the main query

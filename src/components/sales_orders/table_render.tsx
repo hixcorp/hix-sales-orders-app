@@ -8,9 +8,17 @@ import ItemView from './item_view';
 import OrderView from './order_view';
 import { flexRender } from '@tanstack/react-table';
 import UserInputHeader from '../user_input/user_input_header';
+import { Input } from '../ui/input';
+import TableFilter from './table_filter';
+import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenuContent } from '@/components/ui/dropdown-menu';
+import { Filter } from 'lucide-react';
 
 export default function TableRender() {
     const snap = useSnapshot(store);
+
+    
+
     return (
         <>
             <TableHeader className='p-0 m-0'>
@@ -45,9 +53,25 @@ const HeadCell = ({c}:{c: string}) => {
 
     if (!snap_store.editing && !!c_settings && c_settings.hidden) return <></>
 
+
     return (
         <TableCell className='sticky top-0 px-1 bg-primary'>
-            {flexRender(c_settings?.display_name || c, {})}
+            {flexRender(
+                <div className='flex items-center gap-2'>
+                                <span >{c_settings?.display_name || c }</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger>
+                            <Filter className='hover:cursor-pointer flex gap-2 items-center h-[25px]' size={15} />
+                            
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <TableFilter columnName={c}/>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                </div>
+                , {})}
         </TableCell>
     )
 }
+

@@ -1,8 +1,10 @@
 import { proxy, snapshot } from 'valtio';
 import { api_url } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 export type SalesData = {
     data: Data[],
+    filtered_data: Data[],
     schema: string[],
     errors: string[],
     cached: boolean
@@ -44,6 +46,7 @@ export interface Store {
     editing: boolean;
     progress: string;
     table_view: string,
+    hg_filter: {[key:string]:string | DateRange},
     expand_all: boolean,
     fetch_errors: string;
     orders_due_this_week: string[];
@@ -54,6 +57,7 @@ export interface Store {
     updateSettings: (newSettings: Settings) => void;
     postSettings: () => Promise<void>;
     getAllowedValues: (field:string) => Promise<AllowedValue[]>;
+    applyFilter: () => void
 }
 
 export type AllowedValue = {
@@ -66,6 +70,7 @@ const defaultUserInput: UserInput[] = []
 
 const defaultSalesData: SalesData = {
     data: [],
+    filtered_data:[],
     schema: [],
     errors: [],
     cached: false
@@ -82,11 +87,13 @@ export const store = proxy<Store>({
     editing: false,
     progress: '',
     table_view: 'order',
+    hg_filter:{},
     expand_all: true,
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
     allowed_values: {},
+
     fetchData: async (cached_ok?:boolean) => {
         store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
@@ -105,6 +112,7 @@ export const store = proxy<Store>({
         store.loading = false;
         store.progress = ''
     },
+
     fetchSettings: async () => {
         // store.loading = true;
         store.progress = 'Loading column settings'
@@ -131,9 +139,11 @@ export const store = proxy<Store>({
         store.progress = ''
         
     },
+
     updateSettings: (newSettings: Settings) => {
         store.sales_settings = { ...store.sales_settings, ...newSettings };
     },
+
     postSettings: async () => {
         store.loading = true;
         store.progress = 'Saving column settings'
@@ -155,13 +165,13 @@ export const store = proxy<Store>({
         store.loading = false;
         store.progress = ''
     },
+
     getAllowedValues: async (field:string)=>{
         let result:AllowedValue[]=[]
         try{
             const res = await fetch(`${api_url}/allowed_inputs/${field}`)
             if (res.ok){
                 const allowed_values: AllowedValue[] = await res.json()
-                console.log({allowed_values})
                 return allowed_values
             }
             else {
@@ -172,6 +182,24 @@ export const store = proxy<Store>({
            
             return result
         }
+    },
+
+    applyFilter : () => {
+        store.sales_data.filtered_data = store.sales_data.data.filter((row) =>
+            Object.entries(store.hg_filter).every(([column, filter]) =>{
+                // console.log({filter, val:row[column], column, formatted:row[column?.toString().toLocaleLowerCase()], passes:filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase()) })
+                // return filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase())
+                if (typeof filter === 'string') {
+                    return filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase());
+                } else if (filter && filter.from && filter.to) {
+                    const dateVal = new Date(row[column]);
+                    return dateVal >= filter.from && dateVal <= filter.to;
+                }
+                return true;
+            }
+            )
+        );
+        console.log({filtered: store.sales_data.filtered_data})
     }
 });
 

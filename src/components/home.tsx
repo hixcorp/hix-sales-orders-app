@@ -1,12 +1,15 @@
 
 // import { Button } from "@/components/ui/button"
 // import FileInputXML from "./file_input_xml"
+"use client"
 import SalesOrderData from "./sales_orders/sales_order_data"
 import { Suspense } from "react"
 import ChangeDatabaseDirectory from "./change_db_dir"
 import SettingsDrawer from "./sales_drawer"
 import { CachedDataNotice } from "./sales_orders/cache_warnings"
 import { Spinner } from "./ui/spinner"
+import TableFilter from "./sales_orders/table_filter"
+import { Store } from "@/store/sales_data_store"
 
 export default function Home() {
   return (
@@ -22,6 +25,7 @@ export default function Home() {
           
         </div> */}
         <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
+        
       </header>
         <Suspense fallback={"Loading..."}>
             <CachedDataNotice/>
@@ -30,7 +34,7 @@ export default function Home() {
         <div className="p-2 w-full">
         <SettingsDrawer>
           <Suspense fallback={<Spinner size={'large'}/>}>
-            <ChangeDatabaseDirectory button_label="Change Database Location"/>
+          <ChangeDatabaseDirectory button_label="Change Database Location"/>
           </Suspense>
         </SettingsDrawer>
         </div>

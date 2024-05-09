@@ -22,7 +22,7 @@ export function Navigation() {
             </NavigationMenuLink>
           </Link>
         </NavigationMenuItem>
-        <NavigationMenuItem>
+        <NavigationMenuItem >
           <Link href="/home/inventory" legacyBehavior passHref>
             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Live Inventory/Lead Times

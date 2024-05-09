@@ -32,12 +32,12 @@ export const ItemRow = ({ordno, row, bg}:{ordno:string | number, row:Data, bg:bo
     const snap = useSnapshot(row)
     const snap_store = useSnapshot(store)
     
-    const due_this_week = snap_store.orders_due_this_week.includes(String(ordno)) ? 
-        <div className={`p-0 m-0 text-xs font-extrabold gap-2 text-yellow-500 flex items-center`}><CircleAlert />Due This Week</div>
-    : "";
-    const late = snap_store.orders_past_due.includes(String(ordno)) ? 
-    <div className='p-0 m-0 text-xs font-extrabold gap-2 text-destructive flex items-center'><CircleX />Past Due</div>
-    : "";
+    // const due_this_week = snap_store.orders_due_this_week.includes(String(ordno)) ? 
+    //     <div className={`p-0 m-0 text-xs font-extrabold gap-2 text-yellow-500 flex items-center`}><CircleAlert />Due This Week</div>
+    // : "";
+    // const late = snap_store.orders_past_due.includes(String(ordno)) ? 
+    // <div className='p-0 m-0 text-xs font-extrabold gap-2 text-destructive flex items-center'><CircleX />Past Due</div>
+    // : "";
     
     return(
         <TableRow  className={`p-0 ${bg ? 'bg-secondary' : ''}`}>

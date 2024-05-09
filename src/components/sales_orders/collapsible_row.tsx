@@ -116,7 +116,6 @@ const RowCell = ({row, c,show_list, onClick, total_price}:{row:Data, c:string, s
   }
 
   if (c==='unit_price' && !!total_price){
-      console.log({c, total_price})
       cellContent = <p>Total: {total_price}</p>
       
     }
