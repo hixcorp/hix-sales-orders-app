@@ -8,8 +8,7 @@ import ChangeDatabaseDirectory from "./change_db_dir"
 import SettingsDrawer from "./sales_drawer"
 import { CachedDataNotice } from "./sales_orders/cache_warnings"
 import { Spinner } from "./ui/spinner"
-import TableFilter from "./sales_orders/table_filter"
-import { Store } from "@/store/sales_data_store"
+import FileInputCSV from "./file_input_csv"
 
 export default function Home() {
   return (
@@ -26,8 +25,10 @@ export default function Home() {
         </div> */}
         <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
         
+        <FileInputCSV/>
+        
       </header>
-        <Suspense fallback={"Loading..."}>
+        <Suspense fallback={<Spinner size={'large'}/>}>
             <CachedDataNotice/>
             <SalesOrderData />
         </Suspense>

@@ -2,7 +2,7 @@
 'use client'
 import React, { useState } from 'react'
 import { TableCell } from '@/components/ui/table'
-import { AllowedValue, Data, store } from '@/store/sales_data_store'
+import { AllowedValue, AllowedValueCreate, Data, store } from '@/store/sales_data_store'
 
 import { flexRender } from '@tanstack/react-table'
 import { api_url, cn } from '@/lib/utils'
@@ -34,9 +34,46 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
         const row_input = store.user_input.find(u_in => u_in.id === row.ord_no);
         // Don't make any network requests if no changes are made
         if ((selectedValue !== row_input?.[field]) && !(!!!selectedValue && !row_input)) {
-            console.log({textareaValue: selectedValue,row_input,textFalse:!selectedValue, rowFalse:!row_input})
            updateUserInput({[field]:selectedValue},setLoading, setUpdateError,row, current_user)
         }
+    }
+
+    const handleAddOption = async (option:AllowedValueCreate, update:()=>void) => {
+        try{
+            const res = await fetch(`${api_url}/add_allowed_input`,{
+                method: 'POST',
+                headers:{
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(option)
+            })
+            if (res.ok) {
+                await handleChanges(option.value)
+                update()
+            }
+        }catch(err){
+            console.warn(err)
+        }
+        
+
+    }
+
+    const handleRemoveOption = async (option:AllowedValue, update:()=>void) => {
+
+    // await fetch(`${api_url}/remove_allowed_input/`)
+        try{
+            const res = await fetch(`${api_url}/remove_allowed_input/${option.type}/${option.value}`,{
+                method:"DELETE"
+            })
+            if (res.ok){
+                await handleChanges("")
+                update()
+            }
+        
+        }catch(err){
+            console.warn(err)
+        }
+        
     }
 
     return (
@@ -45,7 +82,14 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
                 <>
                 <HoverTooltip content={tooltip} className='flex items-center gap-1 p-1'>
                     
-                    <ComboboxCell field={field} val={""} handleSelect={handleChanges} label={label}/>
+                    <ComboboxCell 
+                        field={field} 
+                        val={row_input?.[field]} 
+                        handleSelect={handleChanges} 
+                        label={label}
+                        addFn={handleAddOption}
+                        removeFn={handleRemoveOption}
+                        />
 
                     {loading && <Spinner size={'small'} />}
                 </HoverTooltip>

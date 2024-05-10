@@ -4,15 +4,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import os
 
-from utils import get_base_directory
+from utils import get_base_directory, normsqlitepath
 
 from settings import *
 
 Base = declarative_base()
 
-DATABASE_NAME = 'local_dbV1.db'
+DATABASE_NAME = 'local_dbv1.db'
 BASE_DIR = get_base_directory()
-LOCAL_DATABASE = f'sqlite:///{os.path.join(BASE_DIR,DATABASE_NAME)}'
+LOCAL_DATABASE = normsqlitepath(os.path.join(BASE_DIR,DATABASE_NAME))
 
 global LOCAL_ENGINE, LOCAL_SESSION, CURRENT_ENGINE, CURRENT_SESSION
 
@@ -76,6 +76,8 @@ def seed_allowed_inputs(session):
     finally:
         db_session.close()
 
+def get_existing_allowed_inputs(db: Session, input_type: str):
+    return set(db.query(AllowedInput.value).filter(AllowedInput.type == input_type).all())
 
 def create_engine_with_url(url):
     return create_engine(url, connect_args={"check_same_thread": False})
@@ -86,7 +88,7 @@ def create_sessionmaker(engine):
 def init_db(engine):
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        local_db = session.execute(select(SavedDatabase).where(SavedDatabase.name == str('Local Database'))).scalar_one_or_none()
+        local_db = session.execute(select(SavedDatabase).where(SavedDatabase.path == str(engine.url))).scalar_one_or_none()
         if not local_db:
             local_db = SavedDatabase(name="Local Database", path=str(engine.url), preferred=True)
             session.add(local_db)
@@ -156,8 +158,8 @@ def start_db():
     CURRENT_ENGINE = LOCAL_ENGINE
     CURRENT_SESSION = LOCAL_SESSION
     init_db(LOCAL_ENGINE)
-    print(f"Starting local database at {LOCAL_ENGINE.url}")
-    print(f"Starting current database at {CURRENT_ENGINE.url}")
+    print(f"Starting local database at {normsqlitepath(LOCAL_ENGINE.url)}")
+    print(f"Starting current database at {normsqlitepath(CURRENT_ENGINE.url)}")
     
 
 if __name__ == '__main__':

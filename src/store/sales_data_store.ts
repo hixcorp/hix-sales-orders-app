@@ -7,7 +7,8 @@ export type SalesData = {
     filtered_data: Data[],
     schema: string[],
     errors: string[],
-    cached: boolean
+    cached: boolean,
+    cache_date:string
 }
 export type Data = {
     [key: string]: string | number;
@@ -65,15 +66,21 @@ export type AllowedValue = {
     type:string,
     value: string,
 }
+export type AllowedValueCreate = {
+    type:string,
+    value:string
+}
 
 const defaultUserInput: UserInput[] = []
 
+const today = new Date(Date.now())
 const defaultSalesData: SalesData = {
     data: [],
     filtered_data:[],
     schema: [],
     errors: [],
-    cached: false
+    cached: false,
+    cache_date: `${today.toLocaleDateString()} ${today.toLocaleTimeString()}`
 };
 
 

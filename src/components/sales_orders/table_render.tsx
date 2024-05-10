@@ -8,7 +8,6 @@ import ItemView from './item_view';
 import OrderView from './order_view';
 import { flexRender } from '@tanstack/react-table';
 import UserInputHeader from '../user_input/user_input_header';
-import { Input } from '../ui/input';
 import TableFilter from './table_filter';
 import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DropdownMenuContent } from '@/components/ui/dropdown-menu';
@@ -16,8 +15,6 @@ import { Filter } from 'lucide-react';
 
 export default function TableRender() {
     const snap = useSnapshot(store);
-
-    
 
     return (
         <>
@@ -39,6 +36,8 @@ export default function TableRender() {
 }
 
 const HeaderCells = ()=>{
+    const snap = useSnapshot(store)
+    if (!snap.sales_data.data[0]) return null
     return(
         Object.keys(store.sales_data.data[0]).map((c, i) => 
             (
@@ -52,7 +51,6 @@ const HeadCell = ({c}:{c: string}) => {
     const c_settings = snap_store.sales_settings[c]
 
     if (!snap_store.editing && !!c_settings && c_settings.hidden) return <></>
-
 
     return (
         <TableCell className='sticky top-0 px-1 bg-primary'>

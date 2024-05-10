@@ -59,7 +59,7 @@ const UserInputHeader = () => {
         }
         get_data()
         
-    },[])
+    },[store.sales_data.data])
 
     
 

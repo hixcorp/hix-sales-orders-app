@@ -55,7 +55,7 @@ export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInp
                     <Input 
                         id={`${row.ord_no}_${field}`} 
                         name='action' 
-                        className='text-primary text-xs font-normal min-w-[15ch]' 
+                        className='text-destructive text-xs font-extrabold min-w-[40ch]' 
                         onKeyDown={handleKeyDown}
                         onBlur={handleBlur}
                         defaultValue={row_input?.[field]}

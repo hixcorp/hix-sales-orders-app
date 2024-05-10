@@ -8,7 +8,7 @@ fn main() {
   tauri::Builder::default()
     .setup(|app| {
             // Start the python server on startup
-            // let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
+            let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
             let app_handle = app.handle();
             let main_window = app.get_window("main").unwrap();
@@ -19,13 +19,13 @@ fn main() {
                      // Clone the handle inside the closure for use in the async context
                     let handle = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
-                        // shutdown_python_server().await;
+                        shutdown_python_server().await;
                         
-                        // let close_python = close_python_server(_pid1).await;
-                        // match close_python {
-                        //   Ok(()) => println!("Python server process closed successfully"),
-                        //   err => println!("Python server process did not close successfully {:?}", err)
-                        // }
+                        let close_python = close_python_server(_pid1).await;
+                        match close_python {
+                          Ok(()) => println!("Python server process closed successfully"),
+                          err => println!("Python server process did not close successfully {:?}", err)
+                        }
                         // After the server shutdown, close the window
                         if let Some(window) = handle.get_window("main") {
                             window.close().expect("failed to close window");
@@ -36,7 +36,7 @@ fn main() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![start_python_server,close_python_server,zoom_window])
+        .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
         .run(tauri::generate_context!())
     
     .expect("error while running tauri application");

@@ -1,11 +1,12 @@
 import shutil
 import sys
+from sqlalchemy import URL
 import xmltodict
 import json
 from typing import Optional, Any
 import polars as pl
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import os
 
@@ -96,7 +97,7 @@ def get_all_items(db_filename):
         errors = err
     return {"schema": schema, "data": rows, "errors": errors}
 
-def cache_expired(time_delta: float, db_filename: str) -> bool:
+def cache_expired(time_delta: float, db_filename: str) -> tuple[bool, str]:
     try:
         # Connect to the database
         conn = sqlite3.connect(db_filename)
@@ -109,7 +110,7 @@ def cache_expired(time_delta: float, db_filename: str) -> bool:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('items', 'cache_info')")
         tables = {row[0] for row in cursor.fetchall()}
         if 'items' not in tables or 'cache_info' not in tables:
-            return True  # Table doesn't exist, cache is considered expired
+            raise ValueError("No tables in the cache database")  # Table doesn't exist, cache is considered expired
 
         # Query the first cache_date from the items table
         # cursor.execute("SELECT cache_date FROM items ORDER BY cache_date ASC LIMIT 1")
@@ -119,7 +120,7 @@ def cache_expired(time_delta: float, db_filename: str) -> bool:
         cursor.execute("SELECT last_cache_date FROM cache_info LIMIT 1")
         result = cursor.fetchone()
         if not result:
-            return True  # No entries in table, cache is considered expired
+            raise ValueError("No cached data available")  # No entries in table, cache is considered expired
 
         # Calculate the time difference
         cache_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S.%f")
@@ -127,14 +128,86 @@ def cache_expired(time_delta: float, db_filename: str) -> bool:
         allowed_time_diff = timedelta(hours=time_delta)  # Using timedelta for time delta
 
         # Check if the elapsed time is greater than the time_delta
-        return (current_time - cache_date) > allowed_time_diff
+        expired = (current_time - cache_date) > allowed_time_diff
+        return (expired, cache_date.isoformat())
     except Exception as e:
         print(f"An error occurred: {e}")
-        return True  # Any error in fetching data leads to cache considered as expired
+        return (True, datetime.now().isoformat())  # Any error in fetching data leads to cache considered as expired
     finally:
         # Ensure the database connection is closed
         conn.close()
 
+def export_to_csv(output_file, df:pl.DataFrame):
+    write_to_csv(df=df,filepath=output_file)
+    
+def ensure_utc(dt):
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+    return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+def normalize_to_utc_midnight(dt: datetime) -> datetime:
+    """
+    Normalize a datetime object to midnight UTC of the same date.
+    """
+    # Convert datetime to UTC
+    dt_utc = dt.astimezone(timezone.utc)
+    # Normalize to midnight UTC
+    return datetime(dt_utc.year, dt_utc.month, dt_utc.day, tzinfo=timezone.utc)
+
+def format_if_date(column):
+    formatted_column = []
+    for value in column:
+        try:
+            # Try to parse the datetime string to a datetime object
+            date_time_obj = datetime.fromisoformat(value)
+            # Format to a date-only string
+            formatted_column.append(date_time_obj.strftime('%Y-%m-%d'))
+        except ValueError:
+            # If parsing fails, keep the original value
+            formatted_column.append(value)
+    return formatted_column
+
+def normsqlitepath(path:str | URL, DATABASE_NAME:str='local_dbv1.db'):
+    add_sqlpath = lambda x : f'sqlite:///{x}'
+    normpath=path
+    if isinstance(normpath, URL): normpath = path.__to_string__()
+    
+    if normpath.startswith('sqlite:///'):
+        return add_sqlpath(os.path.normcase(normpath.replace('sqlite:///','')))
+    elif normpath.startswith('sqlite://'):
+        # path.replace('sqlite://','sqlite:///')
+        # return os.path.normcase(path)
+        return add_sqlpath(os.path.normcase(normpath.replace('sqlite://','')))
+    else:
+        path_parts = os.path.split(normpath)
+        if not path_parts[0]:
+            raise Exception(f'{normpath} is not a valid file. Provide an absolute path')
+        else:
+            if len(path_parts[-1].split()) == 1:
+                # if not os.path.isfile(normpath):
+                #     raise Exception(f'{normpath} is not a valid filepath')
+                if not normpath.endswith('.db'):
+                    raise Exception(f'{normpath} is not a valid .db Database path')
+            else:
+                if not os.path.isdir(normpath):
+                    raise Exception(f'{normpath} is not a valid directory')
+                if not os.path.exists(normpath):
+                    os.path.makedirs(normpath, exist_ok=True)
+                normpath = os.path.join(normpath, DATABASE_NAME)
+            return add_sqlpath(os.path.normcase(normpath))
+
+
+def clear_temp_directory(directory: str):
+    """Clears all files in the specified directory."""
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
 
 if __name__ == "__main__":
     pass

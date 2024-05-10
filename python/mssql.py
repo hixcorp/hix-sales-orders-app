@@ -1,11 +1,20 @@
+import os
 import sqlite3
 import pyodbc
 import json
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
+
+# from main import DateRange
 import utils
 import polars as pl
 from db_conn import conn_str, hg_order_by_req_ship, comment_query, all_comments, all_items
+
+#'MSSQL_output.db'
+DATABASE_NAME = 'local_cache_dbv1.db'
+BASE_DIR = utils.get_base_directory()
+LOCAL_DATABASE = os.path.join(BASE_DIR,DATABASE_NAME)
+DATABASE_FILE = LOCAL_DATABASE
 
 class MSSQLConnector():
     name='MSSQL Connector'
@@ -69,10 +78,12 @@ def process_order_status(record):
 
 def get_all_items(use_cached:bool=True):
     global conn_str
-    database_file = 'MSSQL_output.db'
-
-    if use_cached and not utils.cache_expired(time_delta=0.10, db_filename=database_file):
-        cached_data = get_all_cached_items(database_file)
+    expired, cached_date = utils.cache_expired(time_delta=0.10, db_filename=DATABASE_FILE)
+    print(f'CONNECTION STRING: {conn_str}')
+    print(f"expired: {expired}\ncached_date:{cached_date}")
+    if use_cached and not expired:
+        cached_data = get_all_cached_items(DATABASE_FILE)
+        cached_data['cache_date'] = cached_date
         return cached_data
     # Execute the main query
     try:
@@ -123,12 +134,13 @@ def get_all_items(use_cached:bool=True):
                 
         df = pl.DataFrame(data)
         
-        utils.store_to_sqlite(df, database_file)
+        utils.store_to_sqlite(df, DATABASE_FILE)
 
-        return {"data":data, "schema": columns, "cached": False}
+        return {"data":data, "schema": columns, "cached": False, "cache_date":cached_date}
     except Exception as e:
         print(e)
-        cached_data = get_all_cached_items(database_file)
+        cached_data = get_all_cached_items(DATABASE_FILE)
+        cached_data['cache_date'] = cached_date
         if not cached_data["errors"]: cached_data["errors"] = ["Could not connect to source database"]
         return cached_data
     
@@ -162,9 +174,50 @@ def get_all_cached_items(db_filename):
         errors = err
     return {"schema": schema, "data": data, "errors": errors, "cached":True}
 
-    # df = pl.DataFrame(data)
+def convert_to_dict(columns: list[str], data: list[any]):
+    return [dict(zip(columns, row)) for row in data]
+  
 
-    # database_file = 'MSSQL_output.db'
-    # utils.store_to_sqlite(df, database_file)
-    # print(df)
+def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]], use_cache:bool=True):
+    global conn_str 
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    query_parts = []
+    for col in columns:
+        if col in filters:
+            filter_val = filters[col]
+            if filter_val.__class__.__name__ == 'DateRange': #this is a date range filter
+                from_date = filter_val.from_date#.strftime('%Y-%m-%d')
+                from_date = utils.normalize_to_utc_midnight(from_date)
+                from_date = from_date.strftime('%Y-%m-%d')
+                if filter_val.to is not None:
+                    to_date = filter_val.to
+                    to_date = utils.normalize_to_utc_midnight(to_date)
+                    to_date = (to_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                    query_parts.append(f"{col} BETWEEN '{from_date}' AND '{to_date}'")
+                elif filter_val[['from_date']] is not None:
+                    query_parts.append(f"{col} >= '{from_date}'")
+                else:
+                    pass
+            else: #This is a string filter
+                query_parts.append(f"{col} LIKE '%{filter_val}'")
+    
+    where_clause = ' AND '.join(query_parts)
+    sql = f"SELECT {', '.join(columns) if columns else '*'} FROM items { f'WHERE {where_clause}' if where_clause else ''}"
+    cursor.execute(sql)
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    if not data: return data
+
+    if not columns: columns = [d[0] for d in cursor.description]
+
+    results = convert_to_dict(columns, data)
+    # Serialize to JSON (if needed)
+    json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+
+    return json.loads(json_results)
+
+
 

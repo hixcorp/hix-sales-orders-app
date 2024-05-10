@@ -12,3 +12,4 @@ class ItemSettings(Base):
         self.column_name = column_name
         self.hidden = hidden
         self.display_name = display_name if display_name else column_name
+#main-x86_64-pc-windows-msvc

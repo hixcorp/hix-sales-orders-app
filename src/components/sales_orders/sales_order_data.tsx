@@ -6,13 +6,15 @@ import {  Table } from "@/components/ui/table"
 import { Button } from '@/components/ui/button'
 import TableRender from './table_render';
 import { ComboboxCell } from '../user_input/combobox_input';
+import ExportCSV from '../export_csv';
+import { Spinner } from '../ui/spinner';
 
 const SalesOrderData: React.FC = () => {
     const snap = useSnapshot(store);
     
     const uniqueOrders = new Set(snap.sales_data.data.map(row => row['ord_no']));
     
-    if (snap.loading) return <h1 className='h-full w-full flex justify-center text-xl text-blue-500'>Loading...</h1>;
+    if (snap.loading) return <div className='h-full w-full flex justify-center text-xl '><Spinner size={'large'}/></div>;
     
     return (
         <>
@@ -66,6 +68,7 @@ return(
             <Button className='m-0 h-8' onClick={toggleViewMode}>{snap.table_view === 'item' ? 'Switch to Order View' : 'Switch to Item View'}</Button>
             {snap.table_view === 'order' && <Button className='m-0 h-8' onClick={toggleExpandAll}>{snap.expand_all ? 'Collapse All' : 'Expand All'}</Button>}
         </div>
+        <ExportCSV/>
         <div>
         {snap.editing && <Button onClick={handleCancelEdit} className='m-0 h-8'>Cancel</Button>}
         <Button onClick={handleEditColumns} className='m-0 h-8 w-[12ch]'>{snap.editing ? "Save Changes" : "Edit Columns"}</Button>
