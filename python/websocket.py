@@ -36,7 +36,7 @@ async def check_for_changes(engine):
             results = recent_changes.scalars().all()
             if results:
                 await manager.broadcast(f"Updated records: {results}")
-                last_checked = datetime.utcnow()
+                last_checked = datetime.now(datetime.utc)
 
 @app.websocket("/ws/user_inputs")
 async def websocket_endpoint(websocket: WebSocket):

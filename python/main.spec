@@ -22,7 +22,6 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    exclude_binaries=True,
     name='main-x86_64-pc-windows-msvc',
     debug=False,
     bootloader_ignore_signals=False,
