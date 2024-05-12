@@ -28,7 +28,11 @@ export function UserAccountNav(
   // useEffect(()=>{
     getCurrentUser().then(res=>{
       console.log({user:res})
-      store.current_user = !!res ? res : null
+      if(!!res) {
+        // const user_session = {user:res}
+        store.current_user = res
+      }
+      // store.current_user = !!res ? res : null
     })
 
   // },[])
