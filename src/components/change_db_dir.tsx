@@ -1,11 +1,10 @@
 'use client'
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/api/dialog';
 import { appCacheDir } from '@tauri-apps/api/path';
 import { Button } from '@/components/ui/button';
 import { twMerge } from 'tailwind-merge';
 import { api_url } from '@/lib/utils';
-import { SalesDataContext } from '@/app/salesdata_provider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from './ui/label';
 import { DatabaseZap } from 'lucide-react';
@@ -17,8 +16,6 @@ interface DirectorySelectorProps {
     className?: string
 }
 
-
-
 const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label="Select Directory", className}) => {
     const [newDBLocation, setNewDBLocation] = useState<string | string[] | null>(null);
     const [currentDB, setCurrentDB] = useState<string>('')
@@ -28,23 +25,17 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
     const [errors, setErrors] = useState<string>('')
     const [loading, setLoading] = useState<boolean>(false)
 
-    // const { update_sales_data, sales_data} = useContext(SalesDataContext)
     const handleSelectDirectory = async () => {
         try {
             //Load local folder from the file system if not using url
-            
             const result = await open({
                 directory: locationType==='folder',
                 multiple: false,
                 filters: [{name:'*', extensions:['db']}],
                 defaultPath: await appCacheDir(),
             });
-            console.log({new_db:result})
         
             setNewDBLocation(result);  
-
-            
-                      
         } catch (error) {
             console.error('Error selecting directory:', error);
             setNewDBLocation(String(error))
@@ -137,7 +128,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
     useEffect(()=>{
         get_db_info()
     },[store.sales_data])
-    console.log({localDB, currentDB, usingDefault})
     return (
         <div>
             {loading && <Spinner size={'large'} />}

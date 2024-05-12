@@ -1,3 +1,4 @@
+'use client'
 import React, { useEffect, useState, ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api'
 

@@ -127,7 +127,6 @@ export const store = proxy<Store>({
     },
 
     fetchSettings: async () => {
-        // store.loading = true;
         store.progress = 'Loading column settings'
         try {
             const column_names = {column_names: Object.keys(store.sales_data.data[0])}
@@ -148,7 +147,6 @@ export const store = proxy<Store>({
             console.error(error);
             store.fetch_errors = 'An error occurred while trying to update settings';
         }
-        // store.loading = false;
         store.progress = ''
         
     },
@@ -200,8 +198,6 @@ export const store = proxy<Store>({
     applyFilter : () => {
         store.sales_data.filtered_data = store.sales_data.data.filter((row) =>
             Object.entries(store.hg_filter).every(([column, filter]) =>{
-                // console.log({filter, val:row[column], column, formatted:row[column?.toString().toLocaleLowerCase()], passes:filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase()) })
-                // return filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase())
                 if (typeof filter === 'string') {
                     return filter === '' || row[column]?.toString().toLowerCase().includes(filter.toLowerCase());
                 } else if (filter && filter.from && filter.to) {
@@ -212,7 +208,6 @@ export const store = proxy<Store>({
             }
             )
         );
-        console.log({filtered: store.sales_data.filtered_data})
     }
 });
 
@@ -225,7 +220,6 @@ function calculate_statistics() {
 
     const ordersMap = new Map();
     store.sales_data.data.forEach((row) => {
-        // Assuming the first element in each row is the date and the second element is the order number
         ordersMap.set(row["ord_no"], new Date(row["shipping_dt"]));
     });
     
@@ -256,14 +250,8 @@ export function subscribe_to_updates() {
     };
 
     ws.onmessage = function(event) {
-        console.log({message:event.data})
         let message = event.data
-        // try{
-        //     message = JSON.parse(event.data)
-        // }catch(err){
-        //     console.warn({err})
-            
-        // }
+
         toast({
             title: "Order Updated",
             description: UserInputNotify({message}),

@@ -66,7 +66,6 @@ export function ComboboxCell({field, val, handleSelect, label, addFn, removeFn}:
         <Command
           filter={(value,search)=>{
             setSearchValue(search)
-            console.log({search, value})
             if (value.toLowerCase().includes(search.toLowerCase())) return 1
             return 0
           }}

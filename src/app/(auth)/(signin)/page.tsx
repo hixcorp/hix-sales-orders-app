@@ -1,12 +1,6 @@
-import { Metadata } from "next";
+'use client'
 import UserAuthForm from "@/components/forms/user-auth-form";
 import Image from "next/image";
-export const metadata: Metadata = {
-  title: "HIX Authentication",
-  description: "User Authentication for HIX Cloud",
-};
-
-
 
 export default function AuthenticationPage() {
 

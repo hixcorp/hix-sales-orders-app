@@ -1,28 +1,21 @@
+'use client'
 import { UserAccountNav } from "@/components/auth/use-login";
 import { Navigation } from "@/components/layout/navigation";
-// import { getCurrentUser } from "@/lib/session";
-import { store } from "@/store/sales_data_store";
-import type { Metadata } from "next";
+// import type { Metadata } from "next";
 
 import Image from "next/image";
-// import { notFound } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "HIX Sales Orders App",
-  description: "Created by HIX Corporation (c) 2024",
-};
+// export const metadata: Metadata = {
+//   title: "HIX Sales Orders App",
+//   description: "Created by HIX Corporation (c) 2024",
+// };
 
 export default async function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // const user= store.current_user?.user
-  // console.log({user})
-  // const user = await getCurrentUser()
-  //   if (!user) {
-  //   return notFound()
-  // }
+
   return (
       <>
           <div className='absolute inset-0 min-h-screen min-w-screen max-w-full h-full p-5 flex flex-col max-h-screen '>

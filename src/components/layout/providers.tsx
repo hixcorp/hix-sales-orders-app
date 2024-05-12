@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import ThemeProvider from "./ThemeToggle/theme-provider";
+// import ThemeProvider from "./ThemeToggle/theme-provider";
 // import { SessionProvider, SessionProviderProps } from "next-auth/react";
 import ZoomProvider from "./zoom-provider";
 export default function Providers({
@@ -12,13 +12,13 @@ export default function Providers({
 }) {
   return (
     <>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      {/* <ThemeProvider attribute="class" defaultTheme="light" enableSystem> */}
         {/* <SessionProvider session={session}> */}
           <ZoomProvider>
             {children}
           </ZoomProvider>
         {/* </SessionProvider> */}
-      </ThemeProvider>
+      {/* </ThemeProvider> */}
     </>
   );
 }

@@ -25,32 +25,29 @@ export function UserAccountNav(
   // { user }: UserAccountNavProps
 ) {
   const snap = useSnapshot(store)
-  // useEffect(()=>{
+  useEffect(()=>{
     getCurrentUser().then(res=>{
-      console.log({user:res})
       if(!!res) {
-        // const user_session = {user:res}
         store.current_user = res
       }
-      // store.current_user = !!res ? res : null
     })
 
-  // },[])
+  },[])
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <UserAvatar
-          user={{ name: snap.current_user?.user.name || null, image: snap.current_user?.user.image || null }}
+          user={{ name: snap.current_user?.user?.name || null, image: snap.current_user?.user?.image || null }}
           className="h-8 w-8"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
-            {snap.current_user?.user.name && <p className="font-medium">{snap.current_user?.user.name}</p>}
-            {snap.current_user?.user.email && (
+            {snap.current_user?.user?.name && <p className="font-medium">{snap.current_user?.user.name}</p>}
+            {snap.current_user?.user?.email && (
               <p className="w-[200px] truncate text-sm text-muted-foreground">
-                {snap.current_user?.user.email}
+                {snap.current_user?.user?.email}
               </p>
             )}
           </div>

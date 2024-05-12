@@ -21,29 +21,18 @@ export default function ItemView() {
                         current_order = String(row['ord_no']);
                         bg = !bg;
                     }
-                    return <ItemRow key={`data_row_${i}`} ordno={row['ord_no']} row={row} bg={bg}/>
+                    return <ItemRow key={`data_row_${i}`} row={row} bg={bg}/>
                 })
             }
         </>
     );
 }
-
-export const ItemRow = ({ordno, row, bg}:{ordno:string | number, row:Data, bg:boolean}) => {
+export const ItemRow = ({row, bg}:{row:Data, bg:boolean}) => {
     const snap = useSnapshot(row)
-    const snap_store = useSnapshot(store)
-    
-    // const due_this_week = snap_store.orders_due_this_week.includes(String(ordno)) ? 
-    //     <div className={`p-0 m-0 text-xs font-extrabold gap-2 text-yellow-500 flex items-center`}><CircleAlert />Due This Week</div>
-    // : "";
-    // const late = snap_store.orders_past_due.includes(String(ordno)) ? 
-    // <div className='p-0 m-0 text-xs font-extrabold gap-2 text-destructive flex items-center'><CircleX />Past Due</div>
-    // : "";
-    
+
     return(
         <TableRow  className={`p-0 ${bg ? 'bg-secondary' : ''}`}>
-            {/* <TableCell className='flex p-0 pl-2 flex flex-col w-40'>{due_this_week}{late}</TableCell> */}
             {Object.keys(snap).map((key:string,i:number)=>{
-
                 return(
                     
                     <ItemCell row={row} item_key={key} idx={i} key={`data_cell_${i}`} />

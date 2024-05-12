@@ -1,5 +1,5 @@
 
-
+'use client'
 import dynamic from "next/dynamic";
 import Home from "@/components/home";
 

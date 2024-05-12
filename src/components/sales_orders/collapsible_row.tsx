@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useEffect } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Data, store } from '@/store/sales_data_store';
@@ -5,7 +6,6 @@ import { useSnapshot } from 'valtio';
 import { CircleAlert, CircleX } from 'lucide-react';
 import { flexRender } from '@tanstack/react-table';
 import UserInputOrder from '../user_input/user_input_order';
-import { UserInputField } from '../user_input/user_input_field';
 import HoverTooltip from '../tooltip';
 import { UserDropdownField } from '../user_input/user_dropdown_field';
 

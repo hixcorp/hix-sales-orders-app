@@ -13,11 +13,9 @@ import {
 import {Input} from '@/components/ui/input'
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Checkbox } from '@/components/ui/checkbox'
 import {toast} from '@/components/ui/use-toast';
-import { Dispatch, SetStateAction, useContext, useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { api_url } from '@/lib/utils';
-import { SalesDataContext } from '@/app/salesdata_provider';
 import { store } from '@/store/sales_data_store';
 import { DropdownMenu, DropdownMenuContent } from './ui/dropdown-menu';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
@@ -40,12 +38,11 @@ export default function FileInputCSV(){
     })
     const [loading, setLoading] = useState(false)
 
-    const {update_sales_data} = useContext(SalesDataContext)
 
     function onSubmit (data: z.infer<typeof formSchema>) {
         console.log(data)
         setLoading(true)
-        upload_csv(data, setLoading).then(()=>update_sales_data())
+        upload_csv(data, setLoading)
     }
 
     const fileRef = form.register("file");
@@ -80,7 +77,6 @@ export default function FileInputCSV(){
                                             {...fileRef} 
                                             onChange={(event)=>{
                                                 const d = event?.target?.files ?? {}
-                                                console.log({d})
                                                 field.onChange(d)
                                             }}
                                             className='w-250 hover:cursor-pointer'
@@ -107,8 +103,6 @@ export default function FileInputCSV(){
 async function upload_csv(data: z.infer<typeof formSchema>, setLoading:Dispatch<SetStateAction<boolean>>) {
     const formData = new FormData();
     formData.append("file", data.file[0]);
-    // formData.append("export_csv", String(data.export_csv));
-
     try {
         const response = await fetch(`${api_url}/import_user_input/`, {
             method: 'POST',

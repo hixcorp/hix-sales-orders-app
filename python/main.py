@@ -18,14 +18,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_sessions.frontends.implementations import SessionCookie, CookieParameters
 from fastapi_sessions.backends.implementations import InMemoryBackend
 
-
-
-
 import uvicorn
 from settings import ItemSettings
 import utils
 import os
-from mssql import CustomEncoder, get_all_items, get_filtered_items
+from mssql import get_all_items, get_filtered_items
 
 from db_management import DATABASE_NAME, AllowedInput, SavedDatabase, UserInput, get_current_db, get_existing_allowed_inputs, get_local_db, get_local_db_engine, get_current_db_engine, set_current_database, start_db, update_current_database
 from fastapi import Depends
@@ -37,6 +34,7 @@ import jwt
 from jwt import PyJWKClient
 from dotenv import load_dotenv
 from session import *
+from db_conn import *
 
 load_dotenv()
 app = FastAPI()
@@ -563,13 +561,13 @@ async def auth_callback( _response:Response,code: str = Query(...), state: str =
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code not found")
 
-    token_url = 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'.format(tenant_id=os.getenv("AZURE_AD_TENANT_ID"))
+    token_url = 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'.format(tenant_id=AZURE_AD_TENANT_ID)
     token_data = {
         'grant_type': 'authorization_code',
         'code': code,
         'redirect_uri': 'http://localhost:3000/api/auth/callback/azure-ad',
-        'client_id': os.getenv("AZURE_AD_CLIENT_ID"),
-        'client_secret': os.getenv("AZURE_AD_CLIENT_SECRET"),
+        'client_id': AZURE_AD_CLIENT_ID,
+        'client_secret': AZURE_AD_CLIENT_SECRET,
         'scope': 'openid email profile User.Read'
     }
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -581,7 +579,7 @@ async def auth_callback( _response:Response,code: str = Query(...), state: str =
     scope = tokens.get('scope')
 
     # Decode the ID Token
-    jwks_uri = f'https://login.microsoftonline.com/{os.getenv("AZURE_AD_TENANT_ID")}/discovery/v2.0/keys'
+    jwks_uri = f'https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/discovery/v2.0/keys'
     jwks_client = PyJWKClient(jwks_uri)
     signing_key = jwks_client.get_signing_key_from_jwt(id_token)
     user_info = jwt.decode(
@@ -604,17 +602,17 @@ async def auth_callback( _response:Response,code: str = Query(...), state: str =
     user_details = {
         "name": user_info.get("name"),
         "email": user_info.get("email"),
-        "image": photo_data
+        "image": f'data:image/jpeg;base64,{photo_data}'
     }
-    print('User Details')
-    print(user_details)
-    print('User Info')
-    print(user_info)
+    # print('User Details')
+    # print(user_details)
+    # print('User Info')
+    # print(user_info)
 
     # Set the secure HTTP-only cookie
     # response = RedirectResponse(url="http://localhost:8000/home")
     original_url = state
-    print(f"Original URL: {original_url}")
+    # print(f"Original URL: {original_url}")
     response = RedirectResponse(url=original_url)
     response.set_cookie(
         key="session_token",
@@ -633,8 +631,8 @@ async def auth_callback( _response:Response,code: str = Query(...), state: str =
 @app.get("/start-auth")
 async def start_auth(callbackUrl: str = Query(...),):
     # Redirect to Azure AD login page with the necessary parameters
-    tenant_id = os.getenv("AZURE_AD_TENANT_ID")
-    client_id = os.getenv("AZURE_AD_CLIENT_ID")
+    tenant_id = AZURE_AD_TENANT_ID #os.getenv("AZURE_AD_TENANT_ID")
+    client_id = AZURE_AD_CLIENT_ID #os.getenv("AZURE_AD_CLIENT_ID")
     redirect_uri = 'http://localhost:3000/api/auth/callback/azure-ad'
     azure_login_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
     params = {

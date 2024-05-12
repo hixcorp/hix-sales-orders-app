@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+'use client'
+import { Card, CardHeader } from '@/components/ui/card'
 import React from 'react'
 
 const Inventory = () => {
