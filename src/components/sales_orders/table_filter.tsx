@@ -19,7 +19,7 @@ const TableFilter: React.FC<TableFilterProps> = ({ columnName }) => {
         if (isISODateString(initialFilter,columnName)) {
             setIsDateColumn(true);
         }
-    }, [initialFilter]);
+    }, [initialFilter,columnName]);
 
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,7 +37,6 @@ const TableFilter: React.FC<TableFilterProps> = ({ columnName }) => {
             store.applyFilter()
         }
     }
-    console.log({isDateColumn,filters:snap.hg_filter})
     if (isDateColumn){
         return (
             <DatePickerWithRange

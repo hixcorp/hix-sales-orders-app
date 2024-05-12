@@ -24,7 +24,7 @@ const SettingsDrawer = (
                 <DrawerContent>
                     <DrawerHeader>
                     <DrawerTitle>Database Settings</DrawerTitle>
-                    <DrawerDescription>Change which database you're connected to for status updates</DrawerDescription>
+                    <DrawerDescription>{"Change which database you're connected to for status updates"}</DrawerDescription>
                     </DrawerHeader>
                     <DrawerFooter>
                         {children}

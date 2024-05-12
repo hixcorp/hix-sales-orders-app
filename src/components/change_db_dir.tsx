@@ -55,7 +55,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
         setLoading(true)
         try {
             const newDB = { new_location: newDBLocation, location_type: locationType }
-            console.log({newDB})
             const response = await fetch(`${api_url}/add_preferred_database`, {
                 method: 'POST',
                 headers: {
@@ -67,7 +66,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
             if (response.ok) {
                 // If the request was successful, parse the JSON response
                 const data = await response.json();
-                console.log(data);
             } else {
                 // If the request was an error, parse the JSON error and log it
                 const errorData = await response.json(); // Assume error details are in JSON
@@ -85,14 +83,13 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
         await store.fetchData()
         await store.fetchSettings()
         setLoading(false)
-        // update_sales_data()
     };
 
     const handleResetDatabase = async () => {
         setLoading(true)
         const result = await fetch(`${api_url}/reset_default_database`).then(res=>res.json())
         await get_db_info()
-        await store.fetchSettings()
+        await store.fetchData()
         await store.fetchSettings()
         setLoading(true)
     }
@@ -133,6 +130,7 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
         
         await get_db_info()
         await store.fetchData()
+        await store.fetchSettings()
         setLoading(false)
     }
 

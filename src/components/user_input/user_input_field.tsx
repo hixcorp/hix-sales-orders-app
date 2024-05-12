@@ -10,14 +10,15 @@ import { UserInput } from '@/store/sales_data_store'
 import { Spinner } from '@/components/ui/spinner'
 import { useSnapshot } from 'valtio'
 import HoverTooltip from '../tooltip'
-import { useSession } from 'next-auth/react'
+// import { useSession } from 'next-auth/react'
 import { Session } from 'next-auth'
 
 export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInput }) => {
     const snap = useSnapshot(store.user_input)
     const [loading, setLoading] = useState(false);
     const [updateError, setUpdateError] = useState(false)
-    const current_user = useSession().data
+    // const current_user = useSession().data
+    const current_user = store.current_user
     const row_input = snap.find(u_in => u_in.id === row.ord_no)
 
     const tooltip = row_input ? 

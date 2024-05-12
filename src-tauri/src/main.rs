@@ -8,7 +8,7 @@ fn main() {
   tauri::Builder::default()
     .setup(|app| {
             // Start the python server on startup
-            let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
+            // let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
             let app_handle = app.handle();
             let main_window = app.get_window("main").unwrap();
@@ -19,13 +19,8 @@ fn main() {
                      // Clone the handle inside the closure for use in the async context
                     let handle = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
-                        shutdown_python_server().await;
+                        // shutdown_python_server().await;
                         
-                        let close_python = close_python_server(_pid1).await;
-                        match close_python {
-                          Ok(()) => println!("Python server process closed successfully"),
-                          err => println!("Python server process did not close successfully {:?}", err)
-                        }
                         // After the server shutdown, close the window
                         if let Some(window) = handle.get_window("main") {
                             window.close().expect("failed to close window");
@@ -45,7 +40,7 @@ fn main() {
 #[tauri::command]
 fn start_python_server(window: tauri::Window) -> Result<u32,String>{
     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
-  let (mut rx, mut child) = Command::new_sidecar("main")
+  let (mut rx,child) = Command::new_sidecar("main")
     .expect("failed to create `my-sidecar` binary command")
     .spawn()
     .expect("Failed to spawn sidecar");
@@ -60,8 +55,6 @@ fn start_python_server(window: tauri::Window) -> Result<u32,String>{
         window
           .emit("message", Some(format!("'{}'", line)))
           .expect("failed to emit event");
-        // write to stdin
-        child.write("message from Rust\n".as_bytes()).unwrap();
       }
     }
   });

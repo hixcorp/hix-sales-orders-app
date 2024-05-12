@@ -15,7 +15,7 @@ export const AdditionalInfo = ({row}:{row:Data}) => {
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [updateError, setUpdateError] = useState(false)
-    const current_user = useSession().data
+    const current_user = store.current_user
     const handleChanges = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const row_input = store.user_input.find(u_in => u_in.id === row.ord_no)
@@ -75,7 +75,7 @@ export const AdditionalInfo = ({row}:{row:Data}) => {
 
 
 import { TooltipTrigger, TooltipContent, Tooltip, TooltipProvider } from "@/components/ui/tooltip"
-import { useSession } from 'next-auth/react'
+// import { useSession } from 'next-auth/react'
 
 function TooltipForm({loading, callback, textarea, tooltip}:{
     loading: boolean,

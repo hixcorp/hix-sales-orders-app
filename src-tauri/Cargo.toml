@@ -1,11 +1,11 @@
 [package]
-name = "app"
-version = "0.1.0"
+name = "hix-order-management"
+version = "0.2.0"
 description = "Handles various sales order functions for HIX Corporation"
 authors = ["Arturo Pino"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "hix-order-management"
 edition = "2021"
 rust-version = "1.60"
 

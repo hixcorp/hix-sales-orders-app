@@ -1,19 +1,12 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import UserAuthForm from "@/components/forms/user-auth-form";
-// import { buttonVariants } from "@/components/ui/button";
-// import { cn } from "@/lib/utils";
 import Image from "next/image";
-// import { getProviders } from "next-auth/react";
 export const metadata: Metadata = {
   title: "HIX Authentication",
   description: "User Authentication for HIX Cloud",
 };
 
-// async function getproviders(){
-//   const providers = await getProviders()
-//   console.log("Providers", providers)
-// }
+
 
 export default function AuthenticationPage() {
 

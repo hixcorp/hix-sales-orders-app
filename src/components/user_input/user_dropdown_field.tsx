@@ -13,15 +13,15 @@ import HoverTooltip from '../tooltip'
 
 import { ComboboxCell } from './combobox_input'
 import { Session } from 'next-auth'
-import { useSession } from 'next-auth/react'
+// import { useSession } from 'next-auth/react'
 
 export const UserDropdownField = ({ row, field, label }: { row: Data, field: keyof UserInput, label?:string }) => {
     const snap = useSnapshot(store.user_input)
     const snap_store = useSnapshot(store)
     const [loading, setLoading] = useState(false);
     const [updateError, setUpdateError] = useState(false)
-    const current_user = useSession().data
-
+    // const current_user = useSession().data
+    const current_user = store.current_user
     const row_input = snap.find(u_in => u_in.id === row.ord_no)
 
     const tooltip = row_input ? 

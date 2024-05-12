@@ -80,7 +80,7 @@ def get_existing_allowed_inputs(db: Session, input_type: str):
     return set(db.query(AllowedInput.value).filter(AllowedInput.type == input_type).all())
 
 def create_engine_with_url(url):
-    return create_engine(url, connect_args={"check_same_thread": False})
+    return create_engine(url, connect_args={"check_same_thread": False},pool_size=100, max_overflow=-1)
 
 def create_sessionmaker(engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -133,6 +133,22 @@ def get_current_db():
         yield db
     finally:
         db.close()
+
+def get_currentdb():
+    return CURRENT_SESSION()
+
+def get_currentengine():
+    global CURRENT_ENGINE
+    global LOCAL_ENGINE
+    try:
+        return CURRENT_ENGINE
+    except:
+        return LOCAL_ENGINE
+    
+def get_current_db_url():
+    global CURRENT_ENGINE
+    return CURRENT_ENGINE.url
+
 
 def get_local_db_engine():
     global LOCAL_ENGINE, LOCAL_DATABASE, LOCAL_SESSION

@@ -17,7 +17,6 @@ const ExportCSV = () => {
         const filter_settings = filtered ? store.hg_filter : {}
         setError('')
         setLoading(true)
-        console.log({filter_settings,data:store.sales_data})
         try{
             const response = await fetch(`${api_url}/export_to_csv`,{
                 method:'POST',

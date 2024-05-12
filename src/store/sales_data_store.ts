@@ -1,6 +1,10 @@
 import { proxy, snapshot } from 'valtio';
-import { api_url } from '@/lib/utils';
+import { api_url, ws_url } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+import { toast } from '@/components/ui/use-toast';
+import { message } from '@tauri-apps/api/dialog';
+import UserInputNotify from '@/components/user_input/user_input_notification';
+import { Session } from 'next-auth';
 
 export type SalesData = {
     data: Data[],
@@ -40,6 +44,7 @@ export type UserInput = {
 }
 
 export interface Store {
+    current_user: Session | null
     sales_data: SalesData;
     sales_settings: Settings;
     user_input: UserInput[];
@@ -87,6 +92,7 @@ const defaultSalesData: SalesData = {
 const defaultSettings: Settings = {}
 
 export const store = proxy<Store>({
+    current_user: null,
     sales_data: defaultSalesData,
     sales_settings: defaultSettings,
     user_input: defaultUserInput,
@@ -100,7 +106,7 @@ export const store = proxy<Store>({
     orders_due_this_week: [],
     orders_past_due: [],
     allowed_values: {},
-
+    
     fetchData: async (cached_ok?:boolean) => {
         store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
@@ -234,5 +240,47 @@ function calculate_statistics() {
 }
 
 store.fetchData().then(res => {
-    store.fetchSettings().then(res => console.log({store}))
+    store.fetchSettings().then(res => {
+        console.log({store})
+        const ws = subscribe_to_updates()
+    })
 })
+
+export function subscribe_to_updates() {
+    console.log("CONNECTING")
+    const  address = `${ws_url}/ws/user_inputs`;
+    const ws = new WebSocket(address);
+    
+    ws.onopen = function() {
+        console.log("Opened websocket connection");
+    };
+
+    ws.onmessage = function(event) {
+        console.log({message:event.data})
+        let message = event.data
+        // try{
+        //     message = JSON.parse(event.data)
+        // }catch(err){
+        //     console.warn({err})
+            
+        // }
+        toast({
+            title: "Order Updated",
+            description: UserInputNotify({message}),
+            duration: 250000
+        });
+
+    };
+
+    ws.onclose = function() {
+        console.log("> Closed websocketconnection");
+    };
+
+    ws.onerror = function(error) {
+        console.log({error})
+        console.log(`Could not connect to ${address}`);
+    };
+
+    return ws
+}
+

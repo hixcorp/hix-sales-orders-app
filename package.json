@@ -1,11 +1,11 @@
 {
-  "name": "hix-sales-orders-app",
-  "version": "0.1.0",
+  "name": "hix-order-management",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8000",
     "lint": "next lint"
   },
   "dependencies": {

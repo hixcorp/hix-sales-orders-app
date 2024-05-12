@@ -3,14 +3,20 @@
 // import FileInputXML from "./file_input_xml"
 "use client"
 import SalesOrderData from "./sales_orders/sales_order_data"
-import { Suspense } from "react"
+import { Suspense, useEffect } from "react"
 import ChangeDatabaseDirectory from "./change_db_dir"
 import SettingsDrawer from "./sales_drawer"
 import { CachedDataNotice } from "./sales_orders/cache_warnings"
 import { Spinner } from "./ui/spinner"
 import FileInputCSV from "./file_input_csv"
+import { store} from "@/store/sales_data_store"
+import { getCurrentUser } from "@/lib/session"
 
 export default function Home() {
+  useEffect(()=>{
+    getCurrentUser().then(res=>store.current_user = !!res ? res : null)
+
+  },[])
   return (
 
       <>
@@ -28,10 +34,10 @@ export default function Home() {
         <FileInputCSV/>
         
       </header>
-        <Suspense fallback={<Spinner size={'large'}/>}>
+        {/* <Suspense fallback={<Spinner size={'large'}/>}>
             <CachedDataNotice/>
             <SalesOrderData />
-        </Suspense>
+        </Suspense> */}
         <div className="p-2 w-full">
         <SettingsDrawer>
           <Suspense fallback={<Spinner size={'large'}/>}>

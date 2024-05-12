@@ -2,12 +2,12 @@
   "build": {
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
-    "devPath": "http://localhost:3000",
+    "devPath": "http://localhost:8000",
     "distDir": "../out"
   },
   "package": {
-    "productName": "hix-sales-orders-app",
-    "version": "0.1.0"
+    "productName": "HIX Order Management",
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
@@ -20,16 +20,8 @@
         "sidecar": true,
         "scope": [
           {
-            "name": "../python/dist/main",
-            "sidecar": true,
-            "args": [
-              "arg1",
-              "-a",
-              "--arg2",
-              {
-                "validator": "\\S+"
-              }
-            ]
+            "name": "../python/dist/main/main",
+            "sidecar": true
           }
         ]
       }
@@ -41,7 +33,7 @@
       "deb": {
         "depends": []
       },
-      "externalBin": ["../python/dist/main"],
+      "externalBin": ["../python/dist/main/main"],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

@@ -2,20 +2,21 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+// import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Icons } from "../icons";
 import { useState } from "react";
 import { Spinner } from "../ui/spinner";
+import { api_url } from "@/lib/utils";
 
 export default function AzureADSignInButton() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
       setLoading(true)
-      signIn("azure-ad", { callbackUrl: callbackUrl ?? "/home" })//.then(res => setLoading(false))
+      window.location.href = `${api_url}/start-auth?callbackUrl=${encodeURIComponent(callbackUrl ?? "http://localhost:8000/home")}`
   }
 
   return (

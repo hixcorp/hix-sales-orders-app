@@ -16,11 +16,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
+  // const session = await getServerSession();
   return (
     <html lang="en" suppressHydrationWarning={true}>
         <body className={`${inter.className} overflow-hidden`}>
-        <Providers session={session}>
+        <Providers 
+        // session={session}
+        >
               {children}
           <Toaster/>
         </Providers>

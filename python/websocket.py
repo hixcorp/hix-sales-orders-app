@@ -1,11 +1,10 @@
-from fastapi import WebSocket, WebSocketDisconnect
+import json
+from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 from typing import List
-
 import asyncio
-from sqlalchemy.future import select
 from datetime import datetime, timedelta
-
-from db_management import UserInput
+from db_management import UserInput, get_current_db_url, get_currentdb, get_currentengine 
 
 class ConnectionManager:
     def __init__(self):
@@ -24,30 +23,37 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-
 last_checked = datetime.now()
 
-async def check_for_changes(engine):
-    global last_checked
-    while True:
-        await asyncio.sleep(10)  # Check every 10 seconds
-        async with engine.connect() as conn:
-            recent_changes = await conn.execute(select(UserInput).where(UserInput.last_modified > last_checked))
-            results = recent_changes.scalars().all()
-            if results:
-                await manager.broadcast(f"Updated records: {results}")
-                last_checked = datetime.now(datetime.utc)
-
-@app.websocket("/ws/user_inputs")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+def get_ws_manager():
+    global manager
     try:
-        while True:
-            data = await websocket.receive_text()
-            # You can process messages here if needed
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        yield manager
+    finally:
+        pass
 
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(check_for_changes())
+async def check_for_changes():
+    global last_checked
+    db=get_currentdb()
+    engine = get_currentengine()
+    while True:
+        # Check every 10 seconds
+        await asyncio.sleep(10) 
+         # Update the database if it has changed
+        if engine.url != get_current_db_url():
+            db = get_currentdb()
+            engine = get_currentengine()
+        #     print(f'SWITCHING DATABASES')
+        # print(f'ENGINE URL: {engine.url}\nCURRENT URL:{get_current_db_url()}')
+        
+        if(db):
+            # print('checking db for updates')
+            # print(f'Last Checked: {last_checked.isoformat()}')
+            recent_changes = db.query(UserInput).filter(UserInput.last_updated > last_checked)
+            # recent_changes = await db.execute(select(UserInput).where(UserInput.last_updated > last_checked))
+            results = recent_changes.all()
+            if results:
+                await manager.broadcast(json.dumps(jsonable_encoder(results),indent=4))
+                last_checked = datetime.now()+ timedelta(hours=5)
+
+

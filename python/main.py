@@ -1,8 +1,13 @@
+import asyncio
+import base64
 from datetime import datetime
 import json
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, DirectoryPath, Field, field_validator, validator
+from urllib.parse import urlencode
+from uuid import UUID, uuid4
+from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+import httpx
+from pydantic import BaseModel, DirectoryPath, Field, field_validator
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,6 +15,12 @@ from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_sessions.frontends.implementations import SessionCookie, CookieParameters
+from fastapi_sessions.backends.implementations import InMemoryBackend
+
+
+
+
 import uvicorn
 from settings import ItemSettings
 import utils
@@ -21,19 +32,28 @@ from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 import polars as pl
 
+from websocket import ConnectionManager, check_for_changes, get_ws_manager
+import jwt
+from jwt import PyJWKClient
+from dotenv import load_dotenv
+from session import *
+
+load_dotenv()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
 
+
 HOST='127.0.0.1'
-PORT=8000
+PORT=3000
 BASE_DIR = utils.get_base_directory()
 TEMP_DIR = os.path.join(BASE_DIR,'temp')
+SESSION_TOKEN = ''
 
 # Define the SQLAlchemy base
 Base = declarative_base()
@@ -99,11 +119,11 @@ async def all_items_no_cache():
         raise HTTPException(status_code=404, detail='No items found')
 
 @app.get("/get_all_user_input", response_model=List[UserInputBase])
-def read_all_user_inputs(db: Session = Depends(get_current_db)):
+async def read_all_user_inputs(db: Session = Depends(get_current_db)):
     return db.query(UserInput).all()
 
 @app.get("/get_user_input_by_id/{id}", response_model=UserInputBase)
-def read_user_input_by_id(id: str, db: Session = Depends(get_current_db)):
+async def read_user_input_by_id(id: str, db: Session = Depends(get_current_db)):
         result = db.query(UserInput).filter(UserInput.id == id).first()
         if result is None:
             # Create a new record if not found
@@ -116,7 +136,7 @@ def read_user_input_by_id(id: str, db: Session = Depends(get_current_db)):
         return result
 
 @app.post("/update_user_input_by_id", response_model=UserInputBase)
-def update_user_input_by_id(user_input: UserInputUpdate, db: Session = Depends(get_current_db)):
+async def update_user_input_by_id(user_input: UserInputUpdate, db: Session = Depends(get_current_db)):
     try:
         obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         if obj is None:
@@ -138,7 +158,7 @@ def update_user_input_by_id(user_input: UserInputUpdate, db: Session = Depends(g
 
 
 @app.delete("/remove_allowed_input/{input_type}/{input_value}")
-def remove_allowed_input(input_type: str, input_value: str, db: Session = Depends(get_current_db)):
+async def remove_allowed_input(input_type: str, input_value: str, db: Session = Depends(get_current_db)):
     # Find and remove the specified allowed input
     allowed_input = db.query(AllowedInput).filter(
         AllowedInput.type == input_type,
@@ -171,7 +191,7 @@ class AllowedInputCreate(BaseModel):
     value: str
 
 @app.post("/add_allowed_input", response_model=dict)
-def add_allowed_input(allowed_input: AllowedInputCreate, db: Session = Depends(get_current_db)):
+async def add_allowed_input(allowed_input: AllowedInputCreate, db: Session = Depends(get_current_db)):
     # Check if the input already exists
     existing_input = db.query(AllowedInput).filter(
         AllowedInput.type == allowed_input.type,
@@ -189,7 +209,7 @@ def add_allowed_input(allowed_input: AllowedInputCreate, db: Session = Depends(g
     return {"message": "New allowed input added successfully", "type": allowed_input.type, "value": allowed_input.value}
 
 @app.patch("/update_user_input_cols_by_id", response_model=UserInputBase)
-def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: Session = Depends(get_current_db)):
+async def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: Session = Depends(get_current_db)):
     try:
         obj = db.query(UserInput).filter(UserInput.id == user_input.id).first()
         if obj is None:
@@ -211,19 +231,19 @@ def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: Session
         raise HTTPException(status_code=500, detail="An error occurred: " + str(e))
 
 @app.get("/current_database")
-def get_current_database(current_engine: Engine = Depends(get_current_db_engine)):
+async def get_current_database(current_engine: Engine = Depends(get_current_db_engine)):
     return {"current_database": utils.normsqlitepath(current_engine.url)}
 
 @app.get("/local_database")
-def get_local_database(local_engine: Engine = Depends(get_local_db_engine)):
+async def get_local_database(local_engine: Engine = Depends(get_local_db_engine)):
     return {"local_database": utils.normsqlitepath(local_engine.url)}
 
 @app.get("/using_default_database")
-def using_default_database(current_engine: Engine = Depends(get_current_db_engine), local_engine: Engine = Depends(get_local_db_engine)):
+async def using_default_database(current_engine: Engine = Depends(get_current_db_engine), local_engine: Engine = Depends(get_local_db_engine)):
     return {"using_default": utils.normsqlitepath(current_engine.url) == utils.normsqlitepath(local_engine.url)}
 
 @app.get("/use_default_database")
-def use_default_database(db: Session = Depends(get_local_db)):
+async def use_default_database(db: Session = Depends(get_local_db)):
     local_db = db.query(SavedDatabase).filter(SavedDatabase.name == 'Local Database').first()
 
     #  First set all to not preferred
@@ -237,7 +257,7 @@ def use_default_database(db: Session = Depends(get_local_db)):
     return {"message": "Database updated successfully", "data": local_db}
 
 @app.get("/use_preferred_database")
-def use_default_database(db: Session = Depends(get_local_db)):
+async def use_default_database(db: Session = Depends(get_local_db)):
     preferred_db = db.query(SavedDatabase).filter(SavedDatabase.preferred == True).first()
 
     #  First set all to not preferred
@@ -251,11 +271,11 @@ def use_default_database(db: Session = Depends(get_local_db)):
     return {"message": "Database updated successfully", "data": preferred_db}
 
 @app.get("/process_id")
-def process_id():
+async def process_id():
     return JSONResponse(status_code=200, content={"pid": str(os.getpid())}) 
 
 @app.post("/add_preferred_database")
-def add_preferred_database(new_entry: DatabaseLocation, db: Session = Depends(get_local_db)):
+async def add_preferred_database(new_entry: DatabaseLocation, db: Session = Depends(get_local_db)):
     # Validate the new location
     new_database_path = validate_new_location(new_entry.new_location, new_entry.location_type)
     new_database_path = utils.normsqlitepath(new_database_path)
@@ -316,7 +336,7 @@ class Filters(BaseModel):
     filters: dict[str, str | DateRange]
     
 @app.post("/export_to_csv")
-def export_to_csv(filters:Filters, db: Session = Depends(get_current_db)):
+async def export_to_csv(filters:Filters, db: Session = Depends(get_current_db)):
     try:
             
         # Fetch the visible columns
@@ -396,11 +416,11 @@ class UpdateItemSettings(BaseModel):
     items: list[ItemSettingsUpdate]
 
 @app.get("/get_all_item_settings", response_model=List[ItemSettingsUpdate])
-def get_all_item_settings(db: Session = Depends(get_current_db)):
+async def get_all_item_settings(db: Session = Depends(get_current_db)):
     return db.query(ItemSettings).all()
 
 @app.post("/get_item_settings_by_column_names")
-def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = Depends(get_current_db)):
+async def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = Depends(get_current_db)):
     results = {}
     for name in column_names.column_names:
         setting = db.query(ItemSettings).filter(ItemSettings.column_name == name).first()
@@ -413,7 +433,7 @@ def get_item_settings_by_column_names(column_names: ColumnNames, db: Session = D
     return results
 
 @app.post("/update_item_settings_by_column_names")
-def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Session = Depends(get_current_db)):
+async def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Session = Depends(get_current_db)):
     for item in update_items.items:
         try:
             setting = db.query(ItemSettings).filter(ItemSettings.column_name == item.column_name).first()
@@ -432,14 +452,14 @@ def update_item_settings_by_column_names(update_items:UpdateItemSettings, db: Se
     return {"message" : "Item settings updated successfully"}
 
 @app.get("/allowed_inputs/{input_type}")
-def get_allowed_inputs(input_type: str, db: Session = Depends(get_current_db)):
+async def get_allowed_inputs(input_type: str, db: Session = Depends(get_current_db)):
     allowed_inputs = db.query(AllowedInput).filter(AllowedInput.type == input_type).all()
     if not allowed_inputs:
         raise HTTPException(status_code=404, detail="No entries found for the given type")
     return allowed_inputs
 
 @app.post("/allowed_inputs/{input_type}")
-def add_allowed_input(input_type: str, value: str = Query(...), db: Session = Depends(get_current_db)):
+async def add_allowed_input(input_type: str, value: str = Query(...), db: Session = Depends(get_current_db)):
     existing_input = db.query(AllowedInput).filter(AllowedInput.type == input_type, AllowedInput.value == value).first()
     if existing_input:
         raise HTTPException(status_code=400, detail="This value already exists for the given type")
@@ -449,7 +469,7 @@ def add_allowed_input(input_type: str, value: str = Query(...), db: Session = De
     return {"message": "New value added successfully", "data": new_input}
 
 @app.delete("/allowed_inputs/{input_type}/{value_id}")
-def delete_allowed_input(input_type: str, value_id: int, db: Session = Depends(get_current_db)):
+async def delete_allowed_input(input_type: str, value_id: int, db: Session = Depends(get_current_db)):
     input_to_delete = db.query(AllowedInput).filter(AllowedInput.id == value_id, AllowedInput.type == input_type).first()
     if not input_to_delete:
         raise HTTPException(status_code=404, detail="No entry found with the given ID and type")
@@ -523,6 +543,129 @@ async def import_user_input(file: UploadFile = File(...), db: Session = Depends(
 
     return {"message": "CSV data has been successfully imported and processed, including updating allowed inputs"}
 
+@app.websocket("/ws/user_inputs")
+async def websocket_endpoint(websocket: WebSocket, manager: ConnectionManager=Depends(get_ws_manager), ):
+    
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # You can process messages here if needed
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(check_for_changes())
+
+@app.get("/api/auth/callback/azure-ad")
+async def auth_callback( _response:Response,code: str = Query(...), state: str = Query(...),):
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code not found")
+
+    token_url = 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'.format(tenant_id=os.getenv("AZURE_AD_TENANT_ID"))
+    token_data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': 'http://localhost:3000/api/auth/callback/azure-ad',
+        'client_id': os.getenv("AZURE_AD_CLIENT_ID"),
+        'client_secret': os.getenv("AZURE_AD_CLIENT_SECRET"),
+        'scope': 'openid email profile User.Read'
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(token_url, data=urlencode(token_data), headers=headers)
+    tokens = response.json()
+    access_token = tokens.get('access_token')
+    id_token = tokens.get('id_token')
+    scope = tokens.get('scope')
+
+    # Decode the ID Token
+    jwks_uri = f'https://login.microsoftonline.com/{os.getenv("AZURE_AD_TENANT_ID")}/discovery/v2.0/keys'
+    jwks_client = PyJWKClient(jwks_uri)
+    signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+    user_info = jwt.decode(
+        id_token, 
+        signing_key.key, 
+        algorithms=["RS256"], 
+        audience=os.getenv("AZURE_AD_CLIENT_ID")
+    )
+    graph_url = f"https://graph.microsoft.com/v1.0/me/photo/$value"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    async with httpx.AsyncClient() as client:
+        photo_response = await client.get(graph_url, headers=headers)
+        if photo_response.status_code == 200:
+            photo_data = photo_response.content
+            # Convert photo data to base64 or decide how to handle the binary data
+            photo_data = base64.b64encode(photo_data).decode('utf-8')
+        else:
+            photo_data = None 
+
+    user_details = {
+        "name": user_info.get("name"),
+        "email": user_info.get("email"),
+        "image": photo_data
+    }
+    print('User Details')
+    print(user_details)
+    print('User Info')
+    print(user_info)
+
+    # Set the secure HTTP-only cookie
+    # response = RedirectResponse(url="http://localhost:8000/home")
+    original_url = state
+    print(f"Original URL: {original_url}")
+    response = RedirectResponse(url=original_url)
+    response.set_cookie(
+        key="session_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite='Lax'
+    )
+   
+    session = uuid4()
+    data = SessionData(name=user_details["name"], email=user_details['email'], image=user_details['image'])
+    await backend.create(session,data)
+    cookie.attach_to_response(response, session)
+    return response
+
+@app.get("/start-auth")
+async def start_auth(callbackUrl: str = Query(...),):
+    # Redirect to Azure AD login page with the necessary parameters
+    tenant_id = os.getenv("AZURE_AD_TENANT_ID")
+    client_id = os.getenv("AZURE_AD_CLIENT_ID")
+    redirect_uri = 'http://localhost:3000/api/auth/callback/azure-ad'
+    azure_login_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "response_mode": "query",
+        "scope": "openid profile email",
+        "state": callbackUrl  # Use the state parameter to pass the original callback URL safely
+    }
+    url_with_params = f"{azure_login_url}?{urlencode(params)}"
+    return Response(status_code=307, headers={"Location": url_with_params})
+
+@app.get("/api/auth/current_user", dependencies=[Depends(cookie)])
+async def get_current_user(session_data: SessionData=Depends(verifier)):
+
+    return {'user':session_data}
+
+@app.post("/api/auth/logout")
+async def logout(response: Response, session_id:UUID=Depends(cookie)):
+    # Invalidate the session token by setting an expired cookie or clearing the session
+    try:
+        await backend.delete(session_id=session_id)
+    except:
+        pass
+    try:
+        cookie.delete_from_response(response)
+    except:
+        response.delete_cookie(key="session_token", path="/")
+    return {"message": "Logged out successfully"}
+
 if __name__ == "__main__":
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
@@ -530,5 +673,6 @@ if __name__ == "__main__":
     print(f"Temp Directory: {TEMP_DIR}")
     utils.clear_temp_directory(TEMP_DIR)
     start_db()
+    # asyncio.run(startup_event())
     uvicorn.run(app=app,host=HOST, port=PORT)
     
