@@ -1,8 +1,4 @@
 "use client"
-
-// import Link from "next/link"
-import { User } from "next-auth"
-// import { signOut } from "next-auth/react"
 import { getCurrentUser, signOut } from "@/lib/session"
 
 import {
@@ -15,24 +11,38 @@ import {
 import { UserAvatar } from "@/components/auth/user_avatar"
 import { useSnapshot } from "valtio"
 import { store } from "@/store/sales_data_store"
+import { redirect } from "next/navigation"
+import { useState } from "react"
+import { Spinner } from "../ui/spinner"
 
-interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
-  user: Pick<User, "name" | "image" | "email">
-}
 
 export function UserAccountNav() {
   const snap = useSnapshot(store)
-  
+  const [signoutError, setSignouterror] = useState('')
+  const [loading, setLoading] = useState(false)
     if (!snap.current_user) getCurrentUser().then(res=>{
       if(!!res) {
         store.current_user = res
       }
     })
 
-  const handleSignOut = () => {
-    if (typeof window === 'undefined') return
-    signOut(`${window.location.origin}`)
+  const handleSignOut = async () => {
+
+      try{
+        setLoading(true)
+        setSignouterror('')
+        const res = await signOut()
+        if (res) {redirect('/')}
+        else{
+          setSignouterror("Could not sign out")
+        }
+      }catch(err){
+        setSignouterror('Could not sign out')
+      }finally{
+        setLoading(false)
+      }
   }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -61,7 +71,10 @@ export function UserAccountNav() {
             handleSignOut()
           }}
         >
-          Sign out
+          <div className="flex flex-col">
+          {loading ? <Spinner size={"small"}/> : <span>Sign out</span>}
+          {signoutError && <span className='text-destructive text-xs'>{signoutError}</span>}
+          </div>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

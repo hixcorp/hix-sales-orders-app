@@ -2,7 +2,6 @@ import { proxy, snapshot } from 'valtio';
 import { api_url, ws_url } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { toast } from '@/components/ui/use-toast';
-import { message } from '@tauri-apps/api/dialog';
 import UserInputNotify from '@/components/user_input/user_input_notification';
 import { Session } from 'next-auth';
 import WebSocket from "tauri-plugin-websocket-api";
@@ -112,7 +111,6 @@ export const store = proxy<Store>({
     fetchData: async (cached_ok?:boolean, setloading?:boolean) => {
         store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
-        // if (setloading === undefined || setloading===true) store.loading = true;
         if (setloading !== false) store.loading = true
         try {
             let endpoint = `${api_url}/all_items`

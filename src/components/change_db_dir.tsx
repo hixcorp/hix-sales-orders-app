@@ -21,7 +21,7 @@ const ChangeDatabaseDirectory= () => {
 
     const handleSelectDirectory = async () => {
         try {
-            if (typeof window === 'undefined') return
+            // if (typeof window === 'undefined') return
             //Load local folder from the file system if not using url
             // const result = ''
             const result = await open({

@@ -17,20 +17,21 @@ export async function getCurrentUser() {
   }
 }
 
-export async function signOut(callbackURL:string) {
-
-  const response = await fetch(`${api_url}/api/auth/logout`, {
+export async function signOut() {
+  try{
+    const response = await fetch(`${api_url}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',  // Ensure cookies are sent with the request
     });
 
     if (response.ok) {
-      // Redirect to login page or home page after logout
-      if (typeof window !== 'undefined'){
-        window.location.href = callbackURL;
-      }
-      
+      return     
     } else {
-      alert('Failed to log out');
+      return null
     }
+  }catch(err){
+    console.error("could not log out")
+    return null
+  }
+  
 }

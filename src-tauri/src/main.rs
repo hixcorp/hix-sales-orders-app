@@ -4,7 +4,7 @@ use tauri::{api::process::Command, Manager, WindowEvent};
 
 fn main() {
   
-
+  
   #[cfg(feature="custom-protocol")]
   {
     let port = 8000;
@@ -17,48 +17,75 @@ fn main() {
     let url = format!("http://localhost:{}", port).parse().unwrap();
     let window_url = WindowUrl::External(url);
     context.config_mut().build.dist_dir = AppUrl::Url(window_url.clone());
-    println!(&window_url);
-  }
+    println!("{}",&window_url);
 
-    let app = tauri::Builder::default();
-    
-    #[cfg(feature="custom-protocol")]
-    app.plugin(tauri_plugin_localhost::Builder::new(port).build());
+    tauri::Builder::default()
+          .plugin(tauri_plugin_localhost::Builder::new(port).build())
+          .plugin(tauri_plugin_websocket::init())
+          .setup(move |app| {
+                // Start the python server on startup
+                let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
-    app.plugin(tauri_plugin_websocket::init())
-       .setup(move |app| {
-            #[cfg(feature="custom-protocol")]
-            // Start the python server on startup
-            let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
+                let app_handle = app.handle();
+                let main_window = app.get_window("main").unwrap();
 
-            let app_handle = app.handle();
-            let main_window = app.get_window("main").unwrap();
-
-            main_window.on_window_event(move |event| match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
-                    
-                     // Clone the handle inside the closure for use in the async context
-                    let handle = app_handle.clone();
-                    tauri::async_runtime::spawn(async move {
-                        #[cfg(feature="custom-protocol")]
-                        shutdown_python_server().await;
+                main_window.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
                         
-                        // After the server shutdown, close the window
-                        if let Some(window) = handle.get_window("main") {
-                            window.close().expect("failed to close window");
-                        }
-                    });
-                },
-                _ => {}
-            });
+                        // Clone the handle inside the closure for use in the async context
+                        let handle = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            shutdown_python_server().await;
+                            
+                            // After the server shutdown, close the window
+                            if let Some(window) = handle.get_window("main") {
+                                window.close().expect("failed to close window");
+                            }
+                        });
+                    },
+                    _ => {}
+                });
 
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
-        .run(tauri::generate_context!())
-    
-    .expect("error while running tauri application");
+                Ok(())
+            })
+            .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
+            .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+
+  }
+    #[cfg(not(feature="custom-protocol"))]
+    {
+      tauri::Builder::default()
+            .plugin(tauri_plugin_websocket::init())
+            .setup(move |app| {
+                  let app_handle = app.handle();
+                  let main_window = app.get_window("main").unwrap();
+
+                  main_window.on_window_event(move |event| match event {
+                      WindowEvent::CloseRequested { api, .. } => {
+                          api.prevent_close();
+                          
+                          // Clone the handle inside the closure for use in the async context
+                          let handle = app_handle.clone();
+                          tauri::async_runtime::spawn(async move {
+                              
+                              // After the server shutdown, close the window
+                              if let Some(window) = handle.get_window("main") {
+                                  window.close().expect("failed to close window");
+                              }
+                          });
+                      },
+                      _ => {}
+                  });
+
+                  Ok(())
+              })
+              .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
+              .run(tauri::generate_context!())
+          
+          .expect("error while running tauri application");
+        }
 }
 
 #[tauri::command]
@@ -71,17 +98,6 @@ fn start_python_server(_window: tauri::Window) -> Result<u32,String>{
 
   let pid = child.pid();//.expect("Failed to get python server process id");
 
-  // tauri::async_runtime::spawn(async move {
-  //   // read events such as stdout
-  //   while let Some(event) = rx.recv().await {
-  //     if let CommandEvent::Stdout(line) = event {
-  //       println!("{}",line);
-  //       window
-  //         .emit("message", Some(format!("'{}'", line)))
-  //         .expect("failed to emit event");
-  //     }
-  //   }
-  // });
   println!("{:?}",&pid);
   Ok(pid)
 }

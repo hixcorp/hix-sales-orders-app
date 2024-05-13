@@ -15,7 +15,7 @@ const ExportCSV = () => {
     const [error, setError] = useState('')
 
     const handleExport = async () => {
-        if (typeof window === 'undefined') return
+        // if (typeof window === 'undefined') return
         const filter_settings = filtered ? store.hg_filter : {}
         setError('')
         setLoading(true)
