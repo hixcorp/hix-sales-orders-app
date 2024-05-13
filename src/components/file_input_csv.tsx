@@ -19,20 +19,22 @@ import { api_url } from '@/lib/utils';
 import { store } from '@/store/sales_data_store';
 import { DropdownMenu, DropdownMenuContent } from './ui/dropdown-menu';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-
+import _ from 'lodash'
 const ACCEPTED_FILE_FORMATS = ['text/csv','.csv','.csv']
 
-const formSchema = z.object({
-  file: z.instanceof(FileList)
-    .refine((files) => files?.length >= 1, {
-      message: "CSV File is required",
-    })
-    .refine((files) => ACCEPTED_FILE_FORMATS.includes(files?.[0]?.type), {
-      message: "Only .CSV files are accepted",
-    }),
-});
-
 export default function FileInputCSV(){
+
+    const formSchema = z.object({
+    file: z.any()
+            .refine((files) => _.isArrayLikeObject(files) && files?.length >= 1, {
+        message: "CSV File is required",
+        })
+        .refine((files:any) => ACCEPTED_FILE_FORMATS.includes(files.item(0)!.type), {
+        message: "Only .CSV files are accepted",
+        }),
+    });
+
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
     })
@@ -40,12 +42,46 @@ export default function FileInputCSV(){
 
 
     function onSubmit (data: z.infer<typeof formSchema>) {
-        console.log(data)
         setLoading(true)
         upload_csv(data, setLoading)
     }
 
+    async function upload_csv(data: z.infer<typeof formSchema>, setLoading:Dispatch<SetStateAction<boolean>>) {
+        const formData = new FormData();
+        formData.append("file", data.file[0] as File);
+        try {
+            const response = await fetch(`${api_url}/import_user_input/`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                store.fetchData()
+                toast({
+                    title: "Your data was imported successfully",
+                    description: "See the order numbers for latest data",
+                    duration: 2500
+                });
+            } else {
+                const error = await response.json();
+                toast({
+                    title: "Error",
+                    description: error.message || "An error occurred while processing the file.",
+                });
+            }
+        } catch (error) {
+            console.error("There was an error:", error);
+            toast({
+                title: "Error",
+                description: "An error occurred while processing the file. Make sure the file content is correct.",
+            });
+        } finally{
+            setLoading(false)
+        }
+    }
+
     const fileRef = form.register("file");
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger>
@@ -100,36 +136,3 @@ export default function FileInputCSV(){
     )
 }
 
-async function upload_csv(data: z.infer<typeof formSchema>, setLoading:Dispatch<SetStateAction<boolean>>) {
-    const formData = new FormData();
-    formData.append("file", data.file[0]);
-    try {
-        const response = await fetch(`${api_url}/import_user_input/`, {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            store.fetchData()
-            toast({
-                title: "Your data was imported successfully",
-                description: "See the order numbers for latest data",
-                duration: 2500
-            });
-        } else {
-            const error = await response.json();
-            toast({
-                title: "Error",
-                description: error.message || "An error occurred while processing the file.",
-            });
-        }
-    } catch (error) {
-        console.error("There was an error:", error);
-        toast({
-            title: "Error",
-            description: "An error occurred while processing the file. Make sure the file content is correct.",
-        });
-    } finally{
-        setLoading(false)
-    }
-}

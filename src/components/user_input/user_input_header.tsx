@@ -1,32 +1,19 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import {  TableHead} from '@/components/ui/table'
-import { AllowedValue, Data, store } from '@/store/sales_data_store'
+import { AllowedValue, Data, fetchUserInput, store } from '@/store/sales_data_store'
 
 import { api_url } from '@/lib/utils'
-import { UserInput } from '@/store/sales_data_store'
+// import { UserInput } from '@/store/sales_data_store'
 import { Spinner } from '@/components/ui/spinner'
 
 
-const fetchUserInput = async () => {
-           
-            try{
-   
-                const res = await fetch(`${api_url}/get_all_user_input`)
-                const data: UserInput[] = await res.json()
-                console.log({data})
-                if (data instanceof(Array)) store.user_input = data
-            }catch(err){
-                console.warn({err})
-            }
-        }
 
 const get_allowed_values = async (field:string)=>{
         try{
             const res = await fetch(`${api_url}/allowed_inputs/${field}`)
             if (res.ok){
                 const allowed_values: AllowedValue[] = await res.json()
-                console.log({allowed_values})
                 return {[field]:allowed_values}
             }
             
@@ -48,7 +35,6 @@ const UserInputHeader = () => {
                 })
                 await get_allowed_values("action_owner").then(res=>{
                 Object.assign(store.allowed_values, res)
-                console.log({res})
                 })}
             catch(err){
                 console.warn({err})

@@ -4,7 +4,10 @@ from fastapi.encoders import jsonable_encoder
 from typing import List
 import asyncio
 from datetime import datetime, timedelta
-from db_management import UserInput, get_current_db_url, get_currentdb, get_currentengine 
+
+from sqlalchemy import func
+from db_management import UserInput, get_current_db_url, get_currentdb, get_currentengine
+from utils import timenow 
 
 class ConnectionManager:
     def __init__(self):
@@ -23,7 +26,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-last_checked = datetime.now()
+last_checked = timenow()
 
 def get_ws_manager():
     global manager
@@ -43,8 +46,7 @@ async def check_for_changes():
         if engine.url != get_current_db_url():
             db = get_currentdb()
             engine = get_currentengine()
-        #     print(f'SWITCHING DATABASES')
-        # print(f'ENGINE URL: {engine.url}\nCURRENT URL:{get_current_db_url()}')
+
         
         if(db):
             # print('checking db for updates')
@@ -53,7 +55,8 @@ async def check_for_changes():
             # recent_changes = await db.execute(select(UserInput).where(UserInput.last_updated > last_checked))
             results = recent_changes.all()
             if results:
+                # print('New Update')
                 await manager.broadcast(json.dumps(jsonable_encoder(results),indent=4))
-                last_checked = datetime.now()+ timedelta(hours=5)
+                last_checked = timenow()#datetime.now()+ timedelta(hours=5)
 
 

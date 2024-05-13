@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import os
 
-from utils import get_base_directory, normsqlitepath
+from utils import get_base_directory, normsqlitepath, timenow
 
 from settings import *
 
@@ -16,7 +16,7 @@ LOCAL_DATABASE = normsqlitepath(os.path.join(BASE_DIR,DATABASE_NAME))
 
 global LOCAL_ENGINE, LOCAL_SESSION, CURRENT_ENGINE, CURRENT_SESSION
 
-timenow = lambda: func.now().op('AT TIME ZONE')('UTC')
+# timenow = lambda: func.now().op('AT TIME ZONE')('GMT')
 
 class AllowedInput(Base):
     __tablename__ = 'allowed_inputs'
@@ -31,7 +31,7 @@ class UserInput(Base):
     additional_info = Column(String, default="")
     action = Column(String, default="")
     action_owner = Column(String, default="")
-    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    last_updated = Column(DateTime, default=timenow(), onupdate=timenow())
     updated_by = Column(String, default="")
 
 

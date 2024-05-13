@@ -30,6 +30,7 @@
     "clsx": "^2.1.0",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.368.0",
     "next": "14.2.1",
     "next-auth": "^4.24.7",
@@ -40,11 +41,13 @@
     "react-hook-form": "^7.51.3",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
+    "tauri-plugin-websocket-api": "github:tauri-apps/tauri-plugin-websocket#v1",
     "valtio": "^1.13.2",
     "vaul": "^0.9.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

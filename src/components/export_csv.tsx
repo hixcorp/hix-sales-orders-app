@@ -15,9 +15,11 @@ const ExportCSV = () => {
     const [error, setError] = useState('')
 
     const handleExport = async () => {
+        if (typeof window === 'undefined') return
         const filter_settings = filtered ? store.hg_filter : {}
         setError('')
         setLoading(true)
+        
         try{
             const response = await fetch(`${api_url}/export_to_csv`,{
                 method:'POST',

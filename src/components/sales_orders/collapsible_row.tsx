@@ -8,13 +8,14 @@ import { flexRender } from '@tanstack/react-table';
 import UserInputOrder from '../user_input/user_input_order';
 import HoverTooltip from '../tooltip';
 import { UserDropdownField } from '../user_input/user_dropdown_field';
+import TrackChanges from '../user_input/track_changes';
 
 const order_fields = ["ord_no", "shipping_dt", "ord_dt", "slspsn_no",	"cus_no", "bill_to_name", "ship_to_name", "hold_fg", 
                     "ord_type", 
                     "prod_cat",	"mfg_loc", "user_def_fld_3", "oe_po_no", "discount_pct", 
                     "hold_status"]
 
-const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: boolean }) => {
+const CollapsibleRow = ({id, ordno, rows, bg }: {id:string, ordno: string, rows: Data[], bg: boolean }) => {
   const [collapsed, setCollapsed] = useState(true);
   const snap_store = useSnapshot(store);
   useEffect(() => {
@@ -24,23 +25,14 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: 
     }
   }, [snap_store.expand_all]); // Only re-run the effect if expand_all changes
 
+
   const expanded_row_fields = store.sales_data.schema.filter(f => !order_fields.includes(f))
 
-  let total = 0.0
-  rows.forEach(row=>total+= (Number(row?.unit_price as number || 0.0) * Number(row?.qty_to_ship) || 1.0))
-  const total_price = formatMoney(total)
+
 
   return (
     <>
-      <TableRow 
-        className={collapsed ? 'bg-secondary hover:text-primary font-bold p-0 m-0' : 'p-0 m-0 bg-primary text-white font-bold hover:text-white hover:bg-accent'}
-      >
-        {/* <UserInputField row={rows[0]} field='order_status' /> */}
-        <UserDropdownField row={rows[0]} field='order_status' label="Status"/>
-        <RowCells row={rows[0]} show_list={order_fields} onClick={()=> setCollapsed(prev => !prev)} total_price={total_price}/>
-        <UserInputOrder row={rows[0]}/>
-       
-      </TableRow>
+      <HeaderRow id={id} rows={rows} collapsed={collapsed} setCollapsed={setCollapsed}/>
       {
         !collapsed && 
         rows.map((row: Data, index: number) => (
@@ -55,6 +47,29 @@ const CollapsibleRow = ({ ordno, rows, bg }: { ordno: string, rows: Data[], bg: 
 };
 
 export default CollapsibleRow;
+
+const HeaderRow = ({id, rows, collapsed, setCollapsed}:{id:string, rows:Data[], collapsed:boolean, setCollapsed: React.Dispatch<React.SetStateAction<boolean>>})=>{
+
+  let [ highlight, setHighlight] = useState(false)
+  let total = 0.0
+  rows.forEach(row=>total+= (Number(row?.unit_price as number || 0.0) * Number(row?.qty_to_ship) || 1.0))
+  const total_price = formatMoney(total)
+  const classname = collapsed ? `${highlight ? 'bg-attention' : 'bg-secondary'} hover:text-primary font-bold p-0 m-0` : `${highlight ? 'bg-attention' : 'bg-primary'} p-0 m-0 text-white font-bold hover:text-white hover:bg-accent`
+
+
+  return(
+    <TableRow
+        id={id} 
+        className={classname}
+      >
+        <UserDropdownField row={rows[0]} field='order_status' label="Status"/>
+        <RowCells row={rows[0]} show_list={order_fields} onClick={()=> setCollapsed((prev) => !prev)} total_price={total_price}/>
+        <UserInputOrder row={rows[0]} />
+        <TrackChanges row={rows[0]} setHighlight={setHighlight} />
+       
+      </TableRow>
+  )
+}
 
 const RowCells = ({row, show_list, onClick, total_price}: {row:Data, show_list: string[], onClick?:React.MouseEventHandler<HTMLTableCellElement>, total_price?:string}) => {
 

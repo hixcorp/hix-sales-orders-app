@@ -8,23 +8,26 @@ import { isISODateString } from './collapsible_row'
 
 const format_date = (datestr:string) => {
   const is_iso=  isISODateString(datestr)
-  console.log({datestr, is_iso})
   if (is_iso){
     const date = new Date(datestr)
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
   }else{
     return datestr
   }
-  
 }
 
 export const CachedDataNotice = () => {
     const snap = useSnapshot(store)
   if (snap.loading) return <></>
     if (!snap.sales_data || !Object.keys(snap.sales_data.data).length) {
-        return <h1 className='flex justify-center text-xl text-red-600'>
-            No sales data found in database. Check the network connection and try again.
-            </h1>;
+        return (
+          <div className='flex items-center justify-center text-xl text-destructive font-extrabold'>
+          <h1 className=''>
+              No sales data found in database. Check the network connection and try again.
+          </h1>
+          <Button className='m-3' variant={'secondary'} onClick={()=>{store.fetchData()}}><RefreshCw/>Retry</Button>
+        </div>
+          )
     }
 
     return (

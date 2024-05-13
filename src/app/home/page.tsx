@@ -12,7 +12,7 @@ const FileInput = dynamic(
 
 export default function Page() {
   return (
-      <Home/> 
+    <Home/> 
       
       );
 }

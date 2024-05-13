@@ -15,24 +15,24 @@ import {
 import { UserAvatar } from "@/components/auth/user_avatar"
 import { useSnapshot } from "valtio"
 import { store } from "@/store/sales_data_store"
-import { useEffect } from "react"
 
 interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
   user: Pick<User, "name" | "image" | "email">
 }
 
-export function UserAccountNav(
-  // { user }: UserAccountNavProps
-) {
+export function UserAccountNav() {
   const snap = useSnapshot(store)
-  useEffect(()=>{
-    getCurrentUser().then(res=>{
+  
+    if (!snap.current_user) getCurrentUser().then(res=>{
       if(!!res) {
         store.current_user = res
       }
     })
 
-  },[])
+  const handleSignOut = () => {
+    if (typeof window === 'undefined') return
+    signOut(`${window.location.origin}`)
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -58,7 +58,7 @@ export function UserAccountNav(
           className="cursor-pointer"
           onSelect={(event) => {
             event.preventDefault()
-            signOut(`${window.location.origin}`)
+            handleSignOut()
           }}
         >
           Sign out

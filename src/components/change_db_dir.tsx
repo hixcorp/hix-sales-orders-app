@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/api/dialog';
 import { appCacheDir } from '@tauri-apps/api/path';
 import { Button } from '@/components/ui/button';
-import { twMerge } from 'tailwind-merge';
 import { api_url } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from './ui/label';
@@ -11,12 +10,7 @@ import { DatabaseZap } from 'lucide-react';
 import { store } from '@/store/sales_data_store';
 import { Spinner } from './ui/spinner';
 
-interface DirectorySelectorProps {
-    button_label?: string,
-    className?: string
-}
-
-const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label="Select Directory", className}) => {
+const ChangeDatabaseDirectory= () => {
     const [newDBLocation, setNewDBLocation] = useState<string | string[] | null>(null);
     const [currentDB, setCurrentDB] = useState<string>('')
     const [localDB, setLocalDB] = useState<string>('')
@@ -27,12 +21,14 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
 
     const handleSelectDirectory = async () => {
         try {
+            if (typeof window === 'undefined') return
             //Load local folder from the file system if not using url
+            // const result = ''
             const result = await open({
                 directory: locationType==='folder',
                 multiple: false,
                 filters: [{name:'*', extensions:['db']}],
-                defaultPath: await appCacheDir(),
+                // defaultPath: await appCacheDir(),
             });
         
             setNewDBLocation(result);  
@@ -60,7 +56,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
             } else {
                 // If the request was an error, parse the JSON error and log it
                 const errorData = await response.json(); // Assume error details are in JSON
-                console.log({ res: response, detail: errorData.detail });
                 setErrors(errorData.detail || 'Unknown error occurred');
             }
         } catch (err) {
@@ -94,7 +89,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
                     setLocalDB(local_database || '')
                     setCurrentDB(current_database || '')
                     setUsingDefault(using_default)
-                    console.log({local_database,current_database,usingDefault})
                 }catch(err){
                     console.error(err)
                 }
@@ -106,7 +100,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
     }
 
     const handleInputUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log({e, v:e.target.value})
         setNewDBLocation(e.target.value)
     }
 
@@ -116,7 +109,6 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
             const errors = await res.json()
             console.log({res, detail: errors.detail})
             setErrors(errors.detail || 'Unknown error occured')
-            
         }
         
         await get_db_info()
@@ -128,6 +120,7 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
     useEffect(()=>{
         get_db_info()
     },[store.sales_data])
+
     return (
         <div>
             {loading && <Spinner size={'large'} />}
@@ -160,16 +153,16 @@ const ChangeDatabaseDirectory: React.FC<DirectorySelectorProps> = ({button_label
                     :
                         <span className='p-1 border min-w-[30ch] rounded'>{newDBLocation}</span>
                     }
-                    <Button className={twMerge('h-6 m-1 p-1 text-xs',className)} onClick={handleSelectDirectory} disabled={locationType==='url' || loading}>Browse</Button>
-                    <Button className={twMerge('h-6 m-1 text-xs bg-blue-800',className)} onClick={setDatabaseLocation} disabled={!!!newDBLocation || loading}>Apply</Button>
-                    <Button disabled={loading} className={twMerge('h-6 m-1 p-1 text-xs',className)} onClick={()=>toggleDatabase('preferred')}>Use Preferred Database</Button>               
+                    <Button className={'h-6 m-1 p-1 text-xs'} onClick={handleSelectDirectory} disabled={locationType==='url' || loading}>Browse</Button>
+                    <Button className={'h-6 m-1 text-xs bg-blue-800'} onClick={setDatabaseLocation} disabled={!!!newDBLocation || loading}>Apply</Button>
+                    <Button disabled={loading} className={'h-6 m-1 p-1 text-xs'} onClick={()=>toggleDatabase('preferred')}>Use Preferred Database</Button>               
                 </div>
                 <span className='text-red-800'>{errors}</span>
             </div>
             :
             <div className='flex flex-col pl-8 max-w-fit'>
-                <Button disabled={loading} className={twMerge('h-6 m-1 p-2 text-xs',className)} onClick={()=>toggleDatabase('default')}>Use Default Database</Button>
-                <Button disabled={loading} className={twMerge('h-6 m-1 p-2 text-xs bg-orange-500',className)} onClick={handleResetDatabase}>Reset Preferred Database</Button>                
+                <Button disabled={loading} className={'h-6 m-1 p-2 text-xs'} onClick={()=>toggleDatabase('default')}>Use Default Database</Button>
+                <Button disabled={loading} className={'h-6 m-1 p-2 text-xs bg-orange-500'} onClick={handleResetDatabase}>Reset Preferred Database</Button>                
             </div>
             }
         </div>

@@ -79,8 +79,6 @@ def process_order_status(record):
 def get_all_items(use_cached:bool=True):
     global conn_str
     expired, cached_date = utils.cache_expired(time_delta=0.10, db_filename=DATABASE_FILE)
-    # print(f'CONNECTION STRING: {conn_str}')
-    # print(f"expired: {expired}\ncached_date:{cached_date}")
     if use_cached and not expired:
         cached_data = get_all_cached_items(DATABASE_FILE)
         cached_data['cache_date'] = cached_date
@@ -128,12 +126,8 @@ def get_all_items(use_cached:bool=True):
 
         # Serialize to JSON (if needed)
         json_results = json.dumps(results, indent=4,cls=CustomEncoder)
-        
-        # print(json_results)
-        data = json.loads(json_results)
-                
+        data = json.loads(json_results)        
         df = pl.DataFrame(data)
-        
         utils.store_to_sqlite(df, DATABASE_FILE)
 
         return {"data":data, "schema": columns, "cached": False, "cache_date":cached_date}

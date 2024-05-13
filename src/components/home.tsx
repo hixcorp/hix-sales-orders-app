@@ -29,7 +29,7 @@ export default function Home() {
         <div className="p-2 w-full">
         <SettingsDrawer>
           <Suspense fallback={<Spinner size={'large'}/>}>
-          <ChangeDatabaseDirectory button_label="Change Database Location"/>
+          <ChangeDatabaseDirectory />
           </Suspense>
         </SettingsDrawer>
         </div>

@@ -40,7 +40,7 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    allow_origins=["http://localhost:8000","tauri://localhost","http://localhost:8001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -219,6 +219,7 @@ async def update_user_input_cols_by_id(user_input: UserInputPartialUpdate, db: S
             data = user_input.model_dump(exclude_unset=True, exclude_none=True)
             for key, value in data.items():
                 setattr(obj, key, value)
+            obj.last_updated = utils.timenow()
         db.commit()
         db.refresh(obj)  # Ensure the object is refreshed and still connected
         return obj
@@ -543,14 +544,16 @@ async def import_user_input(file: UploadFile = File(...), db: Session = Depends(
 
 @app.websocket("/ws/user_inputs")
 async def websocket_endpoint(websocket: WebSocket, manager: ConnectionManager=Depends(get_ws_manager), ):
-    
-    await manager.connect(websocket)
     try:
+        await manager.connect(websocket)
         while True:
             data = await websocket.receive_text()
             # You can process messages here if needed
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        try:
+            manager.disconnect(websocket)
+        except:
+            pass
     
 @app.on_event("startup")
 async def startup_event():
@@ -558,75 +561,72 @@ async def startup_event():
 
 @app.get("/api/auth/callback/azure-ad")
 async def auth_callback( _response:Response,code: str = Query(...), state: str = Query(...),):
-    if not code:
-        raise HTTPException(status_code=400, detail="Authorization code not found")
+    try:
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code not found")
 
-    token_url = 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'.format(tenant_id=AZURE_AD_TENANT_ID)
-    token_data = {
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': 'http://localhost:3000/api/auth/callback/azure-ad',
-        'client_id': AZURE_AD_CLIENT_ID,
-        'client_secret': AZURE_AD_CLIENT_SECRET,
-        'scope': 'openid email profile User.Read'
-    }
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    async with httpx.AsyncClient() as client:
-        response = await client.post(token_url, data=urlencode(token_data), headers=headers)
-    tokens = response.json()
-    access_token = tokens.get('access_token')
-    id_token = tokens.get('id_token')
-    scope = tokens.get('scope')
+        token_url = 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'.format(tenant_id=AZURE_AD_TENANT_ID)
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': 'http://localhost:3000/api/auth/callback/azure-ad',
+            'client_id': AZURE_AD_CLIENT_ID,
+            'client_secret': AZURE_AD_CLIENT_SECRET,
+            'scope': 'openid email profile User.Read'
+        }
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(token_url, data=urlencode(token_data), headers=headers)
+        tokens = response.json()
+        access_token = tokens.get('access_token')
+        id_token = tokens.get('id_token')
+        scope = tokens.get('scope')
 
-    # Decode the ID Token
-    jwks_uri = f'https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/discovery/v2.0/keys'
-    jwks_client = PyJWKClient(jwks_uri)
-    signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-    user_info = jwt.decode(
-        id_token, 
-        signing_key.key, 
-        algorithms=["RS256"], 
-        audience=os.getenv("AZURE_AD_CLIENT_ID")
-    )
-    graph_url = f"https://graph.microsoft.com/v1.0/me/photo/$value"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    async with httpx.AsyncClient() as client:
-        photo_response = await client.get(graph_url, headers=headers)
-        if photo_response.status_code == 200:
-            photo_data = photo_response.content
-            # Convert photo data to base64 or decide how to handle the binary data
-            photo_data = base64.b64encode(photo_data).decode('utf-8')
-        else:
-            photo_data = None 
+        # Decode the ID Token
+        jwks_uri = f'https://login.microsoftonline.com/{AZURE_AD_TENANT_ID}/discovery/v2.0/keys'
+        jwks_client = PyJWKClient(jwks_uri)
+        signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+        user_info = jwt.decode(
+            id_token, 
+            signing_key.key, 
+            algorithms=["RS256"], 
+            audience=AZURE_AD_CLIENT_ID #os.getenv("AZURE_AD_CLIENT_ID")
+        )
+        graph_url = f"https://graph.microsoft.com/v1.0/me/photo/$value"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient() as client:
+            photo_response = await client.get(graph_url, headers=headers)
+            if photo_response.status_code == 200:
+                photo_data = photo_response.content
+                # Convert photo data to base64 or decide how to handle the binary data
+                photo_data = base64.b64encode(photo_data).decode('utf-8')
+            else:
+                photo_data = None 
 
-    user_details = {
-        "name": user_info.get("name"),
-        "email": user_info.get("email"),
-        "image": f'data:image/jpeg;base64,{photo_data}'
-    }
-    # print('User Details')
-    # print(user_details)
-    # print('User Info')
-    # print(user_info)
+        user_details = {
+            "name": user_info.get("name"),
+            "email": user_info.get("email"),
+            "image": f'data:image/jpeg;base64,{photo_data}'
+        }
 
-    # Set the secure HTTP-only cookie
-    # response = RedirectResponse(url="http://localhost:8000/home")
-    original_url = state
-    # print(f"Original URL: {original_url}")
-    response = RedirectResponse(url=original_url)
-    response.set_cookie(
-        key="session_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite='Lax'
-    )
-   
-    session = uuid4()
-    data = SessionData(name=user_details["name"], email=user_details['email'], image=user_details['image'])
-    await backend.create(session,data)
-    cookie.attach_to_response(response, session)
-    return response
+        # Set the secure HTTP-only cookie
+        original_url = state
+        response = RedirectResponse(url=original_url)
+        response.set_cookie(
+            key="session_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+    
+        session = uuid4()
+        data = SessionData(name=user_details["name"], email=user_details['email'], image=user_details['image'])
+        await backend.create(session,data)
+        cookie.attach_to_response(response, session)
+        return response
+    except Exception as e:
+        return HTTPException(status_code=500, detail=str(e))
 
 @app.get("/start-auth")
 async def start_auth(callbackUrl: str = Query(...),):

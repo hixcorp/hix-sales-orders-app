@@ -1,3 +1,13 @@
+// import React from 'react'
+
+// const page = () => {
+//   return (
+//     <div>page</div>
+//   )
+// }
+
+// export default page
+
 'use client'
 import { Card, CardHeader } from '@/components/ui/card'
 import React from 'react'

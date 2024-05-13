@@ -209,6 +209,11 @@ def clear_temp_directory(directory: str):
         except Exception as e:
             print(f"Failed to delete {file_path}. Reason: {e}")
 
+def timenow():
+    from sqlalchemy import func 
+    return datetime.now()
+    # return func.now().op('AT TIME ZONE')('GMT')
+
 if __name__ == "__main__":
     pass
     # row = load_preferred_database("HG_Sales_DB.db")

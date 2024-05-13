@@ -22,7 +22,7 @@ export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInp
     const row_input = snap.find(u_in => u_in.id === row.ord_no)
 
     const tooltip = row_input ? 
-    `Status fields last updated on ${formatDate(row_input.last_updated)}${row_input.updated_by ? 'by ' + row_input.updated_by: ''}` 
+    `Status fields last updated on ${formatDate(row_input.last_updated)} ${row_input.updated_by ? 'by ' + row_input.updated_by: ''}` 
     : ''
 
     const handleChanges = async (e: React.FormEvent<HTMLInputElement>) => {
@@ -33,7 +33,6 @@ export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInp
         const row_input = store.user_input.find(u_in => u_in.id === row.ord_no);
         // Don't make any network requests if no changes are made
         if ((textareaValue !== row_input?.[field]) && !(!!!textareaValue && !row_input)) {
-            console.log({textareaValue,row_input,textFalse:!textareaValue, rowFalse:!row_input})
            updateUserInput({[field]:textareaValue},setLoading, setUpdateError,row, current_user)
         }
     }
@@ -73,7 +72,7 @@ export const UserInputField = ({ row, field }: { row: Data, field: keyof UserInp
 }
 
 export const formatDate = (str:string) => {
-        const date = new Date(Date.parse(str+'Z'))
+        const date = new Date(Date.parse(str))
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
     }
 
@@ -84,18 +83,19 @@ new_data: { [key: string]: string | number | Date} , setLoading: (loading: boole
     setLoading(true)
     setError(false)
     const date = new Date()
+    const update = JSON.stringify({
+            id: row.ord_no,
+            // additional_info: textareaValue,
+            // last_updated: Date.parse(date.toUTCString()),
+            updated_by: current_user?.user?.name,
+            ...new_data
+        })
     const res = await fetch(`${api_url}/update_user_input_cols_by_id`,{
         method: "PATCH",
         headers: {
                 'Content-Type': 'application/json',
                 },
-        body: JSON.stringify({
-            id: row.ord_no,
-            // additional_info: textareaValue,
-            last_updated: Date.parse(date.toUTCString()),
-            updated_by: current_user?.user?.name,
-            ...new_data
-        })
+        body: update
     })
 
     if (res.ok){

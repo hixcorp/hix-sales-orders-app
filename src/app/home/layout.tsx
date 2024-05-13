@@ -1,16 +1,8 @@
-'use client'
 import { UserAccountNav } from "@/components/auth/use-login";
 import { Navigation } from "@/components/layout/navigation";
-// import type { Metadata } from "next";
-
 import Image from "next/image";
 
-// export const metadata: Metadata = {
-//   title: "HIX Sales Orders App",
-//   description: "Created by HIX Corporation (c) 2024",
-// };
-
-export default async function HomeLayout({
+export default function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

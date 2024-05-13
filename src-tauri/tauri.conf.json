@@ -24,6 +24,13 @@
             "sidecar": true
           }
         ]
+      },
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": [
+          "http://localhost/*"
+        ]
       }
     },
     "bundle": {
@@ -60,20 +67,29 @@
       }
     },
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "localhost",
+          "windows": ["main","main1"],
+          "enableTauriAPI": true
+        }
+      ]
     },
     "updater": {
       "active": false
     },
     "windows": [
-      {
+      { "label":"main",
+        "title": "HIX Corporation",  
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "HIX Corporation",
         "width": 800,
         "maximized": true
+        
       }
+
     ]
     
   }

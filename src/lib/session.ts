@@ -7,7 +7,6 @@ export async function getCurrentUser() {
     method:'GET',
     credentials: 'include'
   })
-  console.log({res})
   if(res.ok){
     const session: Session = await res.json()
     return session
@@ -27,7 +26,10 @@ export async function signOut(callbackURL:string) {
 
     if (response.ok) {
       // Redirect to login page or home page after logout
-      window.location.href = callbackURL;
+      if (typeof window !== 'undefined'){
+        window.location.href = callbackURL;
+      }
+      
     } else {
       alert('Failed to log out');
     }

@@ -34,8 +34,7 @@ class BasicVerifier(SessionVerifier[UUID, SessionData]):
         backend: InMemoryBackend[UUID, SessionData],
         auth_http_exception: HTTPException,
     ):
-        print(f'Session Identifier: {identifier}')
-        print(f'Backend: {backend}')
+
         self._identifier = identifier
         self._auto_error = auto_error
         self._backend = backend
@@ -59,8 +58,6 @@ class BasicVerifier(SessionVerifier[UUID, SessionData]):
 
     def verify_session(self, model: SessionData) -> bool:
         """If the session exists, it is valid"""
-        print("VERIFYING MODEL SESSION DATA")
-        print(model)
         return True
 
 

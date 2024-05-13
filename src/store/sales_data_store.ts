@@ -5,6 +5,8 @@ import { toast } from '@/components/ui/use-toast';
 import { message } from '@tauri-apps/api/dialog';
 import UserInputNotify from '@/components/user_input/user_input_notification';
 import { Session } from 'next-auth';
+import WebSocket from "tauri-plugin-websocket-api";
+import _ from 'lodash';
 
 export type SalesData = {
     data: Data[],
@@ -58,7 +60,7 @@ export interface Store {
     orders_due_this_week: string[];
     orders_past_due: string[];
     allowed_values: {[key:string]:AllowedValue[]}
-    fetchData: (cached_ok?:boolean) => Promise<void>;
+    fetchData: (cached_ok?:boolean, setloading?:boolean) => Promise<void>;
     fetchSettings: () => Promise<void>;
     updateSettings: (newSettings: Settings) => void;
     postSettings: () => Promise<void>;
@@ -107,10 +109,11 @@ export const store = proxy<Store>({
     orders_past_due: [],
     allowed_values: {},
     
-    fetchData: async (cached_ok?:boolean) => {
+    fetchData: async (cached_ok?:boolean, setloading?:boolean) => {
         store.progress = 'Loading sales order data from Macola HIXQL003'
         if (cached_ok === undefined) cached_ok = true
-        store.loading = true;
+        // if (setloading === undefined || setloading===true) store.loading = true;
+        if (setloading !== false) store.loading = true
         try {
             let endpoint = `${api_url}/all_items`
             if (!cached_ok) endpoint += "/no_cache"
@@ -121,16 +124,17 @@ export const store = proxy<Store>({
         } catch (error) {
             console.error(error);
             store.fetch_errors = 'An error occurred while trying to fetch data';
+        }finally{
+            store.loading = false;
+            store.progress = ''
         }
-        store.loading = false;
-        store.progress = ''
+        
     },
 
     fetchSettings: async () => {
         store.progress = 'Loading column settings'
         try {
             const column_names = {column_names: Object.keys(store.sales_data.data[0])}
-            console.log({data_columns: column_names, json:JSON.stringify(column_names)})
             const response = await fetch(`${api_url}/get_item_settings_by_column_names`,
                 {
                     method: "POST",
@@ -141,7 +145,6 @@ export const store = proxy<Store>({
                 }
             );
             const new_settings: Settings = await response.json();
-            console.log({new_settings})
             store.sales_settings = new_settings;
         } catch (error) {
             console.error(error);
@@ -211,6 +214,16 @@ export const store = proxy<Store>({
     }
 });
 
+export const fetchUserInput = async () => { 
+    try{
+        const res = await fetch(`${api_url}/get_all_user_input`)
+        const data: UserInput[] = await res.json()
+        if (data instanceof(Array)) store.user_input.splice(0, store.user_input.length, ...data)// = data
+    }catch(err){
+        console.warn({err})
+    }
+}
+
 
 function calculate_statistics() {
     const currentDate = new Date();
@@ -233,42 +246,68 @@ function calculate_statistics() {
     ).map(([orderNumber]) => orderNumber);
 }
 
-store.fetchData().then(res => {
-    store.fetchSettings().then(res => {
-        console.log({store})
-        const ws = subscribe_to_updates()
-    })
-})
 
-export function subscribe_to_updates() {
-    console.log("CONNECTING")
+var ws: WebSocket | Promise<WebSocket>
+
+export async function subscribe_to_updates() {
+    console.log("CONNECTING TO SOCKET")
     const  address = `${ws_url}/ws/user_inputs`;
-    const ws = new WebSocket(address);
+    ws = await WebSocket.connect(address);
     
-    ws.onopen = function() {
-        console.log("Opened websocket connection");
-    };
-
-    ws.onmessage = function(event) {
-        let message = event.data
-
-        toast({
-            title: "Order Updated",
-            description: UserInputNotify({message}),
-            duration: 250000
-        });
-
-    };
-
-    ws.onclose = function() {
-        console.log("> Closed websocketconnection");
-    };
-
-    ws.onerror = function(error) {
-        console.log({error})
-        console.log(`Could not connect to ${address}`);
-    };
+    ws.addListener((event) => {
+        if (String(event.type) !== 'Ping'){
+            let message = event.data as string
+            
+            toast({
+                title: "Order Updated",
+                description: UserInputNotify({message}),
+                duration: 250000
+            });
+            try{
+                const orders_updates: UserInput[] = JSON.parse(message)
+                for (let i = 0; i< orders_updates.length; i++){
+                    const order = store.user_input.find(order => order.id === orders_updates[i].id)
+                    if (order===undefined){                        
+                        console.warn("ADDING NEW ORDER UPDATES")
+                        store.user_input.push(orders_updates[i])
+                    }else{
+                        if (!_.isEqual(order, orders_updates[i])){
+                            try{
+                                Object.assign(order,orders_updates[i])
+                            }catch(err){
+                                console.warn("COULD NOT ASSIGN ORDER UPDATES")
+                            }
+                        }   
+                    }
+                }
+            }catch(err){
+                console.warn("Could not update orders")
+                console.warn({message,err,event})
+            }
+            }
+    });
 
     return ws
 }
 
+store.fetchData().then(res => {
+    store.fetchSettings()
+})
+
+subscribe_to_updates().then(res => ws = res)
+
+setInterval(async ()=>{
+    if (!ws){
+        try{
+            ws = await subscribe_to_updates()
+        }catch(err){
+            console.error("Could not connect to websocket");
+            toast({
+                title: "Lost Connection",
+                description: "Lost connection to updates, manually refresh to update data or restart application",
+                duration: 25000
+            })
+        }
+    }
+    store.fetchData(true, false).then(res=> fetchUserInput()).then(res =>store.fetchSettings())
+},1000*60*5)

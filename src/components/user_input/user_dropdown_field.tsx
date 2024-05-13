@@ -20,8 +20,7 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
     const snap_store = useSnapshot(store)
     const [loading, setLoading] = useState(false);
     const [updateError, setUpdateError] = useState(false)
-    // const current_user = useSession().data
-    const current_user = store.current_user
+    const current_user = snap_store.current_user
     const row_input = snap.find(u_in => u_in.id === row.ord_no)
 
     const tooltip = row_input ? 
@@ -103,7 +102,7 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
 }
 
 export const formatDate = (str:string) => {
-        const date = new Date(Date.parse(str+'Z'))
+        const date = new Date(Date.parse(str))
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
     }
 
@@ -116,7 +115,6 @@ export const updateUserInput = async (
 ) => {
     const row_input = store.user_input.find(u_in => u_in.id === row.ord_no)
     
-    console.log({current_user})
     setLoading(true)
     setError(false)
     const date = new Date()

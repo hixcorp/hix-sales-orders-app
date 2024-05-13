@@ -5,7 +5,6 @@ import { store } from '../../store/sales_data_store';
 import {  Table } from "@/components/ui/table"
 import { Button } from '@/components/ui/button'
 import TableRender from './table_render';
-import { ComboboxCell } from '../user_input/combobox_input';
 import ExportCSV from '../export_csv';
 import { Spinner } from '../ui/spinner';
 

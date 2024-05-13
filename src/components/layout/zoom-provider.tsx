@@ -31,13 +31,15 @@ const ZoomProvider: React.FC<ZoomProviderProps> = ({ children }) => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    window.addEventListener('wheel', handleWheel, { passive: false });
+    if (typeof window !== 'undefined'){
+      window.addEventListener('keydown', handleKeyPress);
+      window.addEventListener('wheel', handleWheel, { passive: false });
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      window.removeEventListener('wheel', handleWheel);
-    };
+      return () => {
+        window.removeEventListener('keydown', handleKeyPress);
+        window.removeEventListener('wheel', handleWheel);
+      };
+    }
   }, [scaleFactor]);
 
   return <div>{children}</div>;

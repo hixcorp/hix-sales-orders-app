@@ -1,17 +1,39 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use tauri::{api::process::{Command, CommandEvent}, Manager, WindowEvent};
+use tauri::{api::process::Command, Manager, WindowEvent};
 
 fn main() {
   
-  tauri::Builder::default()
-    .setup(|app| {
+
+  #[cfg(feature="custom-protocol")]
+  {
+    let port = 8000;
+    /// In production we will be using the tauri window to handle authentication
+    /// We use the localhost plugin to expose the tauri window in an http context
+    /// The python server handles the authentication workflow
+    use tauri::WindowUrl;
+    use tauri::utils::config::AppUrl;
+    let mut context = tauri::generate_context!();
+    let url = format!("http://localhost:{}", port).parse().unwrap();
+    let window_url = WindowUrl::External(url);
+    context.config_mut().build.dist_dir = AppUrl::Url(window_url.clone());
+    println!(&window_url);
+  }
+
+    let app = tauri::Builder::default();
+    
+    #[cfg(feature="custom-protocol")]
+    app.plugin(tauri_plugin_localhost::Builder::new(port).build());
+
+    app.plugin(tauri_plugin_websocket::init())
+       .setup(move |app| {
+            #[cfg(feature="custom-protocol")]
             // Start the python server on startup
             let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
             let app_handle = app.handle();
             let main_window = app.get_window("main").unwrap();
+
             main_window.on_window_event(move |event| match event {
                 WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
@@ -19,6 +41,7 @@ fn main() {
                      // Clone the handle inside the closure for use in the async context
                     let handle = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
+                        #[cfg(feature="custom-protocol")]
                         shutdown_python_server().await;
                         
                         // After the server shutdown, close the window
@@ -29,6 +52,7 @@ fn main() {
                 },
                 _ => {}
             });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
@@ -38,26 +62,26 @@ fn main() {
 }
 
 #[tauri::command]
-fn start_python_server(window: tauri::Window) -> Result<u32,String>{
+fn start_python_server(_window: tauri::Window) -> Result<u32,String>{
     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
-  let (mut rx,child) = Command::new_sidecar("main")
+  let (_rx,child) = Command::new_sidecar("main")
     .expect("failed to create `my-sidecar` binary command")
     .spawn()
     .expect("Failed to spawn sidecar");
 
   let pid = child.pid();//.expect("Failed to get python server process id");
 
-  tauri::async_runtime::spawn(async move {
-    // read events such as stdout
-    while let Some(event) = rx.recv().await {
-      if let CommandEvent::Stdout(line) = event {
-        println!("{}",line);
-        window
-          .emit("message", Some(format!("'{}'", line)))
-          .expect("failed to emit event");
-      }
-    }
-  });
+  // tauri::async_runtime::spawn(async move {
+  //   // read events such as stdout
+  //   while let Some(event) = rx.recv().await {
+  //     if let CommandEvent::Stdout(line) = event {
+  //       println!("{}",line);
+  //       window
+  //         .emit("message", Some(format!("'{}'", line)))
+  //         .expect("failed to emit event");
+  //     }
+  //   }
+  // });
   println!("{:?}",&pid);
   Ok(pid)
 }
@@ -93,7 +117,7 @@ async fn close_python_server(pid: u32) -> Result<(), String> {
 async fn get_pids() -> Result<u32,String> {
   let client = reqwest::Client::new();
   // Fetch the PID from the Python server
-  let pid_response = client.get("http://127.0.0.1:8000/process_id")
+  let pid_response = client.get("http://127.0.0.1:3000/process_id")
       .send()
       .await
       .map_err(|e| e.to_string())?
