@@ -736,7 +736,7 @@ if __name__ == "__main__":
             finally:
                 # Restore original stdout and stderr
                 sys.stdout = sys.__stdout__
-                sys.stderr = sys.__stderr__pino
+                sys.stderr = sys.__stderr__
     else:
         if not os.path.exists(TEMP_DIR):
             os.makedirs(TEMP_DIR)
