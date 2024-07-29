@@ -1,5 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use std::{thread::sleep, time::Duration};
+
+use serde_json::Value;
 use tauri::{api::process::Command, Manager, WindowEvent};
 
 fn main() {
@@ -23,8 +26,29 @@ fn main() {
           .plugin(tauri_plugin_localhost::Builder::new(port).build())
           .plugin(tauri_plugin_websocket::init())
           .setup(move |app| {
+                let app_handle = app.handle();
+                let splash_screen_handle = app_handle.clone();
+                let splash_screen = app.get_window("splashscreen").unwrap();
+                splash_screen.set_focus().unwrap();
+                // Wait for python server to start and then show the main window:
+                tauri::async_runtime::spawn(async move {
+                
+                    println!("Starting the python server");
+                    let _ = async_start_python_server().await.unwrap();
+                    
+                    if let Some(main_window) = app_handle.get_window("main") {
+                        main_window.eval("location.reload();").unwrap();
+                        main_window.show().unwrap();
+                        main_window.set_focus().unwrap();
+                    }
+                    
+                    if let Some(splash_screen) = splash_screen_handle.get_window("splashscreen") {
+                        splash_screen.close().unwrap();
+                    }
+
+                });
                 // Start the python server on startup
-                let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
+                // let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
 
                 let app_handle = app.handle();
                 let main_window = app.get_window("main").unwrap();
@@ -53,31 +77,54 @@ fn main() {
             .run(tauri::generate_context!())
         .expect("error while running tauri application");
 
-  }
+    }
+
     #[cfg(not(feature="custom-protocol"))]
     {
       tauri::Builder::default()
             .plugin(tauri_plugin_websocket::init())
             .setup(move |app| {
-                  let app_handle = app.handle();
-                  let main_window = app.get_window("main").unwrap();
+                // let app_handle = app.handle();
+                // let splash_screen_handle = app_handle.clone();
+                // let splash_screen = app.get_window("splashscreen").unwrap();
+                // splash_screen.set_focus().unwrap();
+                // // Wait for python server to start and then show the main window:
+                // tauri::async_runtime::spawn(async move {
+                
+                //     println!("Starting the python server");
+                //     let _ = async_start_python_server().await.unwrap();
+                    
+                //     if let Some(main_window) = app_handle.get_window("main") {
+                //         main_window.eval("location.reload();").unwrap();
+                //         main_window.show().unwrap();
+                //         main_window.set_focus().unwrap();
+                //     }
+                    
+                //     if let Some(splash_screen) = splash_screen_handle.get_window("splashscreen") {
+                //         splash_screen.close().unwrap();
+                //     }
 
-                  main_window.on_window_event(move |event| match event {
-                      WindowEvent::CloseRequested { api, .. } => {
-                          api.prevent_close();
-                          
-                          // Clone the handle inside the closure for use in the async context
-                          let handle = app_handle.clone();
-                          tauri::async_runtime::spawn(async move {
-                              
-                              // After the server shutdown, close the window
-                              if let Some(window) = handle.get_window("main") {
-                                  window.close().expect("failed to close window");
-                              }
-                          });
-                      },
-                      _ => {}
-                  });
+                // });
+                
+                let app_handle = app.handle();
+                let main_window = app.get_window("main").unwrap();
+                main_window.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        
+                        // Clone the handle inside the closure for use in the async context
+                        let handle = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            
+                            // After the server shutdown, close the window
+                            if let Some(window) = handle.get_window("main") {
+                                window.close().expect("failed to close window");
+                            }
+                        });
+                    },
+                    _ => {}
+                }
+                );
 
                   Ok(())
               })
@@ -89,10 +136,10 @@ fn main() {
 }
 
 #[tauri::command]
-fn start_python_server(_window: tauri::Window) -> Result<u32,String>{
+fn start_python_server() -> Result<u32,String>{
     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
   let (_rx,child) = Command::new_sidecar("main")
-    .expect("failed to create `my-sidecar` binary command")
+    .expect("failed to create `main` python server binary command")
     .spawn()
     .expect("Failed to spawn sidecar");
 
@@ -101,6 +148,75 @@ fn start_python_server(_window: tauri::Window) -> Result<u32,String>{
   println!("{:?}",&pid);
   Ok(pid)
 }
+
+// async fn async_start_python_server(_window: tauri::Window) -> Result<u32,String>{
+//     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
+//   let (_rx,child) = Command::new_sidecar("main")
+//     .expect("failed to create `main` python server binary command")
+//     .spawn()
+//     .expect("Failed to spawn sidecar");
+
+//   let pid = child.pid();//.expect("Failed to get python server process id");
+
+//   let client = reqwest::Client::new();
+//   let mut pid_response = Err("".to_string());
+//   while pid_response.is_err() {
+//         pid_response = client
+//             .get("http://127.0.0.1:3000/process_id")
+//             .send()
+//             .await
+//             .map_err(|e| e.to_string())
+//             .and_then(move |response| response.json::<Value>().await.map_err(|e| e.to_string()));
+
+//         if pid_response.is_err() {
+//             println!("Failed to fetch PID. Retrying...");
+//             sleep(Duration::from_secs(1)); // Adding a delay between attempts
+//         }
+//     }
+
+//   println!("{:?}",&pid);
+//   Ok(pid)
+// }
+
+async fn async_start_python_server() -> Result<u32, String> {
+    // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
+    let (_rx, child) = Command::new_sidecar("main")
+        .expect("failed to create `main` python server binary command")
+        .spawn()
+        .expect("Failed to spawn sidecar");
+
+    let pid = child.pid(); // .expect("Failed to get python server process id");
+
+    let client = reqwest::Client::new();
+    let mut pid_response = Err("".to_string());
+
+    while pid_response.is_err() {
+        pid_response = match client
+            .get("http://127.0.0.1:3000/process_id")
+            .send()
+            .await
+        {
+            Ok(response) => match response.json::<Value>().await {
+                Ok(json) => Ok(json),
+                Err(e) => Err(e.to_string()),
+            },
+            Err(e) => Err(e.to_string()),
+        };
+
+        if pid_response.is_err() {
+            println!("Failed to fetch PID. Retrying...");
+            sleep(Duration::from_secs(1)); // Adding a delay between attempts
+        }
+    }
+
+    match pid_response {
+        Ok(pid_response_value) => println!("Received PID response: {:?}", pid_response_value),
+        Err(e) => eprintln!("Failed to fetch PID: {}", e),
+    }
+
+    Ok(pid)
+}
+
 
 #[tauri::command]
 async fn close_python_server(pid: u32) -> Result<(), String> {

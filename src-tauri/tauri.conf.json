@@ -75,7 +75,20 @@
         "height": 600,
         "resizable": true,
         "width": 800,
-        "maximized": true
+        "maximized": true,
+        "visible" : false
+      },
+      { "label":"splashscreen",
+        "title": "HIX Corporation",  
+        "fullscreen": false,
+        "height": 400,
+        "width": 800,
+        "resizable": false,
+        "maximized": false,
+        "url": "splashscreen.html",
+        "decorations": false,
+        "transparent": true,
+        "center": true
       }
 
     ]

@@ -1,0 +1,77 @@
+/* styles.css */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+    font-family: Arial, sans-serif;
+}
+
+#splash-screen {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    margin: 30px;
+    background-color: hsla(231, 100%, 46%, 0);
+    border-color:#000000;
+    border-width: 5px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 1s ease-out;
+}
+
+.logo-container {
+    margin-bottom: 20px;    
+    background-image: url("hixcorp_logo.png");
+    background-position: center; /* Centers the image */
+    background-repeat: no-repeat; /* Prevents repeating */
+    background-size:contain; /* Covers the entire element */
+}
+
+.logo {
+    width: 200px;
+    height: 200px;
+}
+
+/* .spinner {
+    border: 8px solid #000000;
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 2s linear infinite;
+} */
+
+.loading {
+    padding-bottom: 10px;
+    margin: 0;
+}
+
+.spinner {
+    border: 8px solid #000000;
+    border-top: 8px solid hwb(180 100% 0%); /* Initial color */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 2s linear infinite, color-change 4s linear infinite;
+}
+@keyframes color-change {
+    0% { border-top-color: rgb(147, 182, 248); }
+    50% { border-top-color: blue; }
+    100% { border-top-color: rgb(147, 182, 248); }
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#main-content {
+    text-align: center;
+}
