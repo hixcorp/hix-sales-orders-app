@@ -172,7 +172,7 @@ def convert_to_dict(columns: list[str], data: list[any]):
     return [dict(zip(columns, row)) for row in data]
   
 
-def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]], use_cache:bool=True):
+def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]], use_cache:bool=True, filter_by_order:bool=False):
     global conn_str 
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
@@ -195,11 +195,13 @@ def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]]
                 else:
                     pass
             else: #This is a string filter
-                query_parts.append(f"{col} LIKE '%{filter_val}'")
+                query_parts.append(f"LOWER({col}) LIKE '%{filter_val.lower()}%'")
+                pass
     
     where_clause = ' AND '.join(query_parts)
     sql = f"SELECT {', '.join(columns) if columns else '*'} FROM items { f'WHERE {where_clause}' if where_clause else ''}"
     cursor.execute(sql)
+    # '---------------------------------------'
     data = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -211,7 +213,35 @@ def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]]
     # Serialize to JSON (if needed)
     json_results = json.dumps(results, indent=4,cls=CustomEncoder)
 
-    return json.loads(json_results)
+    if not filter_by_order : return json.loads(json_results)
+    #'------------------------------------------'
+    matched_orders = data
 
+    # Extract unique order numbers from matched items
+    order_numbers = {ord_no[0] for ord_no in matched_orders}
+
+    # Fetch all items associated with these order numbers
+    if order_numbers:
+        orders_in_clause = ', '.join([f"'{num}'" for num in order_numbers])
+        sql_all_items = f"SELECT {', '.join(columns) if columns else '*'} FROM items WHERE ord_no IN ({orders_in_clause})"
+        cursor.execute(sql_all_items)
+        all_items = cursor.fetchall()
+
+        if not columns:
+            columns = [desc[0] for desc in cursor.description]
+
+        results = convert_to_dict(columns, all_items)
+        # Serialize to JSON (if needed)
+        json_results = json.dumps(results, indent=4, cls=CustomEncoder)
+
+        cursor.close()
+        conn.close()
+        return json.loads(json_results)
+
+
+    cursor.close()
+    conn.close()
+    return []
+    
 
 

@@ -3,17 +3,15 @@
 import React, { useState } from 'react'
 import { TableCell } from '@/components/ui/table'
 import { AllowedValue, AllowedValueCreate, Data, store } from '@/store/sales_data_store'
-
 import { flexRender } from '@tanstack/react-table'
-import { api_url, cn } from '@/lib/utils'
+import { server_url, cn } from '@/lib/utils'
 import { UserInput } from '@/store/sales_data_store'
 import { Spinner } from '@/components/ui/spinner'
 import { useSnapshot } from 'valtio'
 import HoverTooltip from '../tooltip'
-
 import { ComboboxCell } from './combobox_input'
 import { Session } from 'next-auth'
-// import { useSession } from 'next-auth/react'
+import { get_allowed_values } from './user_input_header'
 
 export const UserDropdownField = ({ row, field, label }: { row: Data, field: keyof UserInput, label?:string }) => {
     const snap = useSnapshot(store.user_input)
@@ -37,9 +35,9 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
         }
     }
 
-    const handleAddOption = async (option:AllowedValueCreate, update:()=>void) => {
+    const handleAddOption = async (option:AllowedValueCreate) => {
         try{
-            const res = await fetch(`${api_url}/add_allowed_input`,{
+            const res = await fetch(`${server_url}/add_allowed_input`,{
                 method: 'POST',
                 headers:{
                     'Content-Type': 'application/json',
@@ -53,28 +51,28 @@ export const UserDropdownField = ({ row, field, label }: { row: Data, field: key
         }catch(err){
             console.warn(err)
         }
-        
-
     }
 
-    const handleRemoveOption = async (option:AllowedValue, update:()=>void) => {
-
-    // await fetch(`${api_url}/remove_allowed_input/`)
+    const handleRemoveOption = async (option:AllowedValue) => {
         try{
-            const res = await fetch(`${api_url}/remove_allowed_input/${option.type}/${option.value}`,{
+            const res = await fetch(`${server_url}/remove_allowed_input/${option.type}/${option.value}`,{
                 method:"DELETE"
             })
             if (res.ok){
                 await handleChanges("")
                 update()
             }
-        
         }catch(err){
             console.warn(err)
         }
-        
     }
 
+    const update = async () => {
+        await get_allowed_values(field).then(res=>{
+                Object.assign(store.allowed_values, res)
+                })
+    }
+    
     return (
         <TableCell className='p-0 m-0 text-secondary-foreground'>
             {flexRender(
@@ -117,15 +115,13 @@ export const updateUserInput = async (
     
     setLoading(true)
     setError(false)
-    const date = new Date()
-    const res = await fetch(`${api_url}/update_user_input_cols_by_id`,{
+    const res = await fetch(`${server_url}/update_user_input_cols_by_id`,{
         method: "PATCH",
         headers: {
                 'Content-Type': 'application/json',
                 },
         body: JSON.stringify({
             id: row.ord_no,
-            last_updated: Date.parse(date.toUTCString()),
             updated_by: current_user?.user?.name,
             ...new_data
         })

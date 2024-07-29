@@ -11,7 +11,12 @@ export default function OrderView() {
    
     // Group data by order number keeping the same list order in original data list
     const snap = useSnapshot(store)
-    const source_data = snap.sales_data && snap.sales_data.filtered_data.length > 0 ? store.sales_data.filtered_data : store.sales_data.data
+    let source_data
+    if (snap.sales_data && snap.sales_data.filtered_data.length > 0){
+        source_data = store.sales_data.filtered_data 
+    }else{
+        source_data = store.sales_data.data
+    }
     
     const groupedData = source_data.reduce((acc:GroupedData, row, index) => {
                                 const ordNo = row?.ord_no;

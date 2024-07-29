@@ -12,8 +12,10 @@ import { UserAvatar } from "@/components/auth/user_avatar"
 import { useSnapshot } from "valtio"
 import { store } from "@/store/sales_data_store"
 import { redirect } from "next/navigation"
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { Spinner } from "../ui/spinner"
+import SettingsDrawer from "../sales_drawer"
+import ChangeDatabaseDirectory from "../change_db_dir"
 
 
 export function UserAccountNav() {
@@ -40,6 +42,7 @@ export function UserAccountNav() {
         setSignouterror('Could not sign out')
       }finally{
         setLoading(false)
+        if (typeof window !== 'undefined') window.location.href = '/'
       }
   }
 

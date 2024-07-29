@@ -1,8 +1,7 @@
 'use client'
 import React, { useEffect, useState, ReactNode } from 'react';
-import { invoke } from '@tauri-apps/api'
+// import { invoke } from '@tauri-apps/api'
 import dynamic from 'next/dynamic';
-import { api_url } from '@/lib/utils';
 
 interface ZoomProviderProps {
   children: ReactNode;
@@ -26,7 +25,6 @@ const ZoomProvider: React.FC<ZoomProviderProps> = ({ children }) => {
         setScaleFactor(newScaleFactor);
         document.body.style.zoom = newScaleFactor.toString()
         // await invoke("zoom_window", { scaleFactor: newScaleFactor });
-        // await fetch(`${api_url}/current_database`)
       };
 
     const handleKeyPress = (event: KeyboardEvent) => {

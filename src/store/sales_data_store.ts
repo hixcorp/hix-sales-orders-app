@@ -1,11 +1,12 @@
 import { proxy, snapshot } from 'valtio';
-import { api_url, ws_url } from '@/lib/utils';
+import { server_url, server_ws_url } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { toast } from '@/components/ui/use-toast';
 import UserInputNotify from '@/components/user_input/user_input_notification';
 import { Session } from 'next-auth';
 import WebSocket from "tauri-plugin-websocket-api";
 import _ from 'lodash';
+import { getCurrentUser } from '@/lib/session';
 
 export type SalesData = {
     data: Data[],
@@ -45,6 +46,8 @@ export type UserInput = {
 }
 
 export interface Store {
+    connected:boolean,
+    local_server:boolean,
     current_user: Session | null
     sales_data: SalesData;
     sales_settings: Settings;
@@ -64,7 +67,7 @@ export interface Store {
     updateSettings: (newSettings: Settings) => void;
     postSettings: () => Promise<void>;
     getAllowedValues: (field:string) => Promise<AllowedValue[]>;
-    applyFilter: () => void
+    applyFilter: () => Promise<void>
 }
 
 export type AllowedValue = {
@@ -93,6 +96,8 @@ const defaultSalesData: SalesData = {
 const defaultSettings: Settings = {}
 
 export const store = proxy<Store>({
+    connected:false,
+    local_server: false,
     current_user: null,
     sales_data: defaultSalesData,
     sales_settings: defaultSettings,
@@ -102,7 +107,7 @@ export const store = proxy<Store>({
     progress: '',
     table_view: 'order',
     hg_filter:{},
-    expand_all: true,
+    expand_all: false,
     fetch_errors: '',
     orders_due_this_week: [],
     orders_past_due: [],
@@ -113,14 +118,16 @@ export const store = proxy<Store>({
         if (cached_ok === undefined) cached_ok = true
         if (setloading !== false) store.loading = true
         try {
-            let endpoint = `${api_url}/all_items`
+            let endpoint = `${server_url}/all_items`
             if (!cached_ok) endpoint += "/no_cache"
             const response = await fetch(endpoint);
             const new_sales_data: SalesData = await response.json();
             store.sales_data = Object.assign(store.sales_data, new_sales_data);
+            if (!store.connected) store.connected = true
             calculate_statistics()
         } catch (error) {
             console.error(error);
+            store.connected = false
             store.fetch_errors = 'An error occurred while trying to fetch data';
         }finally{
             store.loading = false;
@@ -133,7 +140,7 @@ export const store = proxy<Store>({
         store.progress = 'Loading column settings'
         try {
             const column_names = {column_names: Object.keys(store.sales_data.data[0])}
-            const response = await fetch(`${api_url}/get_item_settings_by_column_names`,
+            const response = await fetch(`${server_url}/get_item_settings_by_column_names`,
                 {
                     method: "POST",
                     headers: {
@@ -144,8 +151,10 @@ export const store = proxy<Store>({
             );
             const new_settings: Settings = await response.json();
             store.sales_settings = new_settings;
+            if (!store.connected) store.connected = true
         } catch (error) {
             console.error(error);
+            store.connected = false
             store.fetch_errors = 'An error occurred while trying to update settings';
         }
         store.progress = ''
@@ -161,7 +170,7 @@ export const store = proxy<Store>({
         store.progress = 'Saving column settings'
         const settings_to_update = {items: Object.values(snapshot(store.sales_settings))}
         try {
-            const response = await fetch(`${api_url}/update_item_settings_by_column_names`, {
+            const response = await fetch(`${server_url}/update_item_settings_by_column_names`, {
                 method: "POST",
                 headers: {
                 'Content-Type': 'application/json',
@@ -170,8 +179,10 @@ export const store = proxy<Store>({
             });
             await response.json();
             await store.fetchSettings();
+            if (!store.connected ) store.connected = true
         } catch (error) {
             console.error(error);
+            store.connected = false
             store.fetch_errors = 'An error occurred while trying to update settings';
         }
         store.loading = false;
@@ -181,7 +192,7 @@ export const store = proxy<Store>({
     getAllowedValues: async (field:string)=>{
         let result:AllowedValue[]=[]
         try{
-            const res = await fetch(`${api_url}/allowed_inputs/${field}`)
+            const res = await fetch(`${server_url}/allowed_inputs/${field}`)
             if (res.ok){
                 const allowed_values: AllowedValue[] = await res.json()
                 return allowed_values
@@ -196,7 +207,8 @@ export const store = proxy<Store>({
         }
     },
 
-    applyFilter : () => {
+    applyFilter : async () => {
+        console.log({store})
         store.sales_data.filtered_data = store.sales_data.data.filter((row) =>
             Object.entries(store.hg_filter).every(([column, filter]) =>{
                 if (typeof filter === 'string') {
@@ -212,16 +224,20 @@ export const store = proxy<Store>({
     }
 });
 
-export const fetchUserInput = async () => { 
-    try{
-        const res = await fetch(`${api_url}/get_all_user_input`)
-        const data: UserInput[] = await res.json()
-        if (data instanceof(Array)) store.user_input.splice(0, store.user_input.length, ...data)// = data
-    }catch(err){
-        console.warn({err})
+const _fetchUserInput = async () => { 
+    try {
+        const res = await fetch(`${server_url}/get_all_user_input`);
+        const data: UserInput[] = await res.json();
+        if (data instanceof(Array)) {
+            store.user_input.splice(0, store.user_input.length, ...data);
+        }
+        if (!store.connected) store.connected = true;
+    } catch (err) {
+        console.warn({ err });
     }
-}
+};
 
+export const fetchUserInput = _.debounce(_fetchUserInput, 250, {leading:true})
 
 function calculate_statistics() {
     const currentDate = new Date();
@@ -249,24 +265,43 @@ var ws: WebSocket | Promise<WebSocket>
 
 export async function subscribe_to_updates() {
     console.log("CONNECTING TO SOCKET")
-    const  address = `${ws_url}/ws/user_inputs`;
-    ws = await WebSocket.connect(address);
+    const  address = `${server_ws_url}/ws/user_inputs`;
+    try{
+        ws = await WebSocket.connect(address)
+    }catch(err){
+        console.log("COULD NOT CONNECT TO WEBSOCKET. TRYING AGAIN")
+        console.warn({err})
+        ws = await WebSocket.connect(address)
+        if (!ws) store.connected = false
+    }
+    if (ws) console.log("CONNECTED")
     
     ws.addListener((event) => {
         if (String(event.type) !== 'Ping'){
             let message = event.data as string
-            
-            toast({
-                title: "Order Updated",
-                description: UserInputNotify({message}),
-                duration: 250000
-            });
+            let current_user = store.current_user?.user?.name ? store.current_user?.user?.name : ''
+            let updated_by = ''
+            try{
+                const parsed_message: UserInput[] = JSON.parse(message)
+                updated_by = parsed_message[0].updated_by
+            }catch(err){
+                console.warn({message,err,user:store.current_user, current_user})
+            }
+            let updated_by_current_user = current_user === updated_by
+            if (updated_by === '') updated_by_current_user = false
+            if (message && !updated_by_current_user){
+                toast({
+                                    title: "Order Updated",
+                                    description: UserInputNotify({message}),
+                                    duration: 25000
+                                });
+            }
+                
             try{
                 const orders_updates: UserInput[] = JSON.parse(message)
                 for (let i = 0; i< orders_updates.length; i++){
                     const order = store.user_input.find(order => order.id === orders_updates[i].id)
                     if (order===undefined){                        
-                        console.warn("ADDING NEW ORDER UPDATES")
                         store.user_input.push(orders_updates[i])
                     }else{
                         if (!_.isEqual(order, orders_updates[i])){
@@ -288,24 +323,45 @@ export async function subscribe_to_updates() {
     return ws
 }
 
-store.fetchData().then(res => {
-    store.fetchSettings()
-})
 
-subscribe_to_updates().then(res => ws = res)
 
-setInterval(async ()=>{
-    if (!ws){
-        try{
-            ws = await subscribe_to_updates()
-        }catch(err){
-            console.error("Could not connect to websocket");
-            toast({
-                title: "Lost Connection",
-                description: "Lost connection to updates, manually refresh to update data or restart application",
-                duration: 25000
-            })
+if (typeof window !== 'undefined'){
+    getCurrentUser().then(res=>store.current_user = !!res ? res : null)
+
+    store.fetchData().then(res => {
+        store.fetchSettings()
+    })
+
+    subscribe_to_updates().then(res => ws = res)
+
+    setInterval(async ()=>{
+        if (!ws){
+            try{
+                ws = await subscribe_to_updates()
+                if (!store.connected ) store.connected = true
+            }catch(err){
+                store.connected = false
+                console.error("Could not connect to websocket");
+                toast({
+                    title: "Lost Connection",
+                    description: "Lost connection to updates, manually refresh to update data or restart application",
+                    duration: 25000
+                })
+            }
         }
-    }
-    store.fetchData(true, false).then(res=> fetchUserInput()).then(res =>store.fetchSettings())
-},1000*60*5)
+        store.fetchData(true, false).then(res=> fetchUserInput()).then(res =>store.fetchSettings())
+    },1000*60*5)
+
+    setInterval(async () => {
+        try{
+            const res = await fetch(`${server_url}/current_database`)
+            if (res) store.connected = true
+            else store.connected = false
+        }catch{
+            store.connected = false
+        }
+        
+    },10000)
+}
+
+

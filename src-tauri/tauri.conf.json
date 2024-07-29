@@ -3,35 +3,16 @@
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:8000",
-    "distDir": "../out"
+    "distDir": "../out",
+    "withGlobalTauri":true
   },
   "package": {
     "productName": "HIX Order Management",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "tauri": {
     "allowlist": {
-      "path": {"all":true},
-      "dialog": {"open":true},
-      "window":{
-        "maximize":true
-      },
-      "shell": {
-        "sidecar": true,
-        "scope": [
-          {
-            "name": "../python/dist/main/main",
-            "sidecar": true
-          }
-        ]
-      },
-      "http": {
-        "all": true,
-        "request": true,
-        "scope": [
-          "http://localhost/*"
-        ]
-      }
+      "all":true
     },
     "bundle": {
       "active": true,
@@ -71,10 +52,18 @@
       "dangerousRemoteDomainIpcAccess": [
         {
           "domain": "localhost",
-          "windows": ["main","main1"],
+          "windows": ["main"],
+          "plugins": ["websocket"],
+          "enableTauriAPI": true
+        },
+        {
+          "domain": "HIXTS001",
+          "windows": ["main"],
+          "plugins":["websocket"],
           "enableTauriAPI": true
         }
-      ]
+      ],
+      "dangerousUseHttpScheme":true
     },
     "updater": {
       "active": false
@@ -87,10 +76,20 @@
         "resizable": true,
         "width": 800,
         "maximized": true
-        
       }
 
     ]
     
-  }
+    
+  },
+    "plugins":{
+      "websocket":{
+            "enabled":true,
+            "$schema": "../gen/schemas/desktop-schema.json",
+            "identifier": "hixcorp",
+            "description": "Capability for the main window",
+            "windows": ["main"],
+            "permissions": ["websocket:default"]
+          }
+    }
 }

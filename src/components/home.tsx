@@ -1,41 +1,50 @@
 
 "use client"
 import SalesOrderData from "./sales_orders/sales_order_data"
-import { Suspense, useEffect } from "react"
-import ChangeDatabaseDirectory from "./change_db_dir"
-import SettingsDrawer from "./sales_drawer"
+import { Suspense } from "react"
 import { CachedDataNotice } from "./sales_orders/cache_warnings"
 import { Spinner } from "./ui/spinner"
 import FileInputCSV from "./file_input_csv"
-import { store} from "@/store/sales_data_store"
-import { getCurrentUser } from "@/lib/session"
+import { useSnapshot } from "valtio"
+import { store } from "@/store/sales_data_store"
+import { formatMoney } from "./sales_orders/collapsible_row"
 
 export default function Home() {
-  useEffect(()=>{
-    getCurrentUser().then(res=>store.current_user = !!res ? res : null)
 
-  },[])
   return (
 
       <>
-      <header className=" h-auto p-2 md:p-4 flex items-center justify-between">
+      <div className=" p-2 py-0 md:p-4 flex items-center justify-between">
         <h1 className="text-2xl font-extrabold">Hard Goods on Order by Requested Ship Date</h1>
+        <TotalOrderValue/>
         <FileInputCSV/>
-      </header>
+      </div>
         <Suspense fallback={<Spinner size={'large'}/>}>
             <CachedDataNotice/>
             <SalesOrderData />
-        </Suspense>
-        <div className="p-2 w-full">
-        <SettingsDrawer>
-          <Suspense fallback={<Spinner size={'large'}/>}>
-          <ChangeDatabaseDirectory />
-          </Suspense>
-        </SettingsDrawer>
-        </div>
-        
+        </Suspense>       
     </>    
   )
+}
+
+const TotalOrderValue = () => {
+  const snap = useSnapshot(store)
+
+  let source_data
+    if (snap.sales_data && snap.sales_data.filtered_data.length > 0){
+        source_data = snap.sales_data.filtered_data 
+    }else{
+        source_data = snap.sales_data.data
+    }
+
+    let total_value = 0.0
+    source_data.forEach(row => {
+      total_value += Number(row.unit_price) * Number(row.qty_to_ship)
+    })
+
+    return(
+      <h2 className="font-bold">Total Cost of Shown Items: <span className="text-blue-500">{formatMoney(total_value)}</span></h2>
+    )
 }
 
 // function DownloadIcon(props:any) {

@@ -36,7 +36,7 @@ const ApplyHighlights = ({row_input, setHighlight}:{row_input:UserInput, setHigh
             setTimeout(()=>{
                 setHighlight(false)
                 setCompareDate(updated_date)
-            },3000)
+            },5000)
             setHighlight(true)
         }
     },[row_input.last_updated])

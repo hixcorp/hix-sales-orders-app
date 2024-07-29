@@ -1,9 +1,9 @@
-import { api_url } from "./utils"
+import { local_api_url } from "./utils"
 import { Session } from "next-auth"
 
 export async function getCurrentUser() {
   try{
-  const res = await fetch(`${api_url}/api/auth/current_user`,{
+  const res = await fetch(`${local_api_url}/api/auth/current_user`,{
     method:'GET',
     credentials: 'include'
   })
@@ -19,7 +19,7 @@ export async function getCurrentUser() {
 
 export async function signOut() {
   try{
-    const response = await fetch(`${api_url}/api/auth/logout`, {
+    const response = await fetch(`${local_api_url}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',  // Ensure cookies are sent with the request
     });

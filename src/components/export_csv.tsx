@@ -4,7 +4,7 @@ import { Button } from './ui/button'
 import { store } from '@/store/sales_data_store'
 import { Spinner } from './ui/spinner'
 import HoverTooltip from './tooltip'
-import { api_url } from '@/lib/utils'
+import { server_url } from '@/lib/utils'
 import {toast} from '@/components/ui/use-toast';
 import { Checkbox } from './ui/checkbox'
 
@@ -21,7 +21,7 @@ const ExportCSV = () => {
         setLoading(true)
         
         try{
-            const response = await fetch(`${api_url}/export_to_csv`,{
+            const response = await fetch(`${server_url}/export_to_csv`,{
                 method:'POST',
                 headers: {
                     'Content-Type': 'application/json',

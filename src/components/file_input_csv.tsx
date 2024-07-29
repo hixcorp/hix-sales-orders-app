@@ -15,7 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import {toast} from '@/components/ui/use-toast';
 import { Dispatch, SetStateAction, useState } from 'react';
-import { api_url } from '@/lib/utils';
+import { server_url } from '@/lib/utils';
 import { store } from '@/store/sales_data_store';
 import { DropdownMenu, DropdownMenuContent } from './ui/dropdown-menu';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
@@ -29,7 +29,7 @@ export default function FileInputCSV(){
             .refine((files) => _.isArrayLikeObject(files) && files?.length >= 1, {
         message: "CSV File is required",
         })
-        .refine((files:any) => ACCEPTED_FILE_FORMATS.includes(files.item(0)!.type), {
+        .refine((files:any) => ACCEPTED_FILE_FORMATS.includes(files.item(0)?.type), {
         message: "Only .CSV files are accepted",
         }),
     });
@@ -50,7 +50,7 @@ export default function FileInputCSV(){
         const formData = new FormData();
         formData.append("file", data.file[0] as File);
         try {
-            const response = await fetch(`${api_url}/import_user_input/`, {
+            const response = await fetch(`${server_url}/import_user_input/`, {
                 method: 'POST',
                 body: formData,
             });
@@ -85,9 +85,7 @@ export default function FileInputCSV(){
     return (
         <DropdownMenu>
             <DropdownMenuTrigger>
-                <Button variant={'outline'}>
-                    Import Status Inputs
-                </Button>
+                <Input className='outline-none hover:outline-none focus:outline-none hover:text-primary-foreground hover:bg-primary/80 cursor-pointer' type='button' value='Import Status Inputs'/>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
                 <Form {...form}>
@@ -119,7 +117,7 @@ export default function FileInputCSV(){
                                             disabled={loading}
                                             />
                                 </FormControl>
-                                <Button type='submit' disabled={loading}>Submit</Button>
+                                <Input type='submit' className='bg-primary hover:bg-primary/80 cursor-pointer w-[8ch] text-primary-foreground' disabled={loading} value="Submit"/>
                                 
                             </FormItem>
                             </div>

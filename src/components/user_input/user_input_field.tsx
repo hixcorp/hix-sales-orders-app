@@ -5,7 +5,7 @@ import { TableCell } from '@/components/ui/table'
 import { Data, store } from '@/store/sales_data_store'
 import { Input } from '../ui/input'
 import { flexRender } from '@tanstack/react-table'
-import { api_url } from '@/lib/utils'
+import { server_url } from '@/lib/utils'
 import { UserInput } from '@/store/sales_data_store'
 import { Spinner } from '@/components/ui/spinner'
 import { useSnapshot } from 'valtio'
@@ -76,21 +76,31 @@ export const formatDate = (str:string) => {
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
     }
 
+type NewData = Partial<Pick<UserInput, keyof UserInput>>;
 export const updateUserInput = async (
-new_data: { [key: string]: string | number | Date} , setLoading: (loading: boolean) => void, setError: (loading: boolean) => void, row: Data, current_user: Session | null) => {
+new_data: NewData, setLoading: (loading: boolean) => void, setError: (loading: boolean) => void, row: Data, current_user: Session | null) => {
+    
+    
     const row_input = store.user_input.find(u_in => u_in.id === row.ord_no)
+
+    if (row_input === undefined) return
+    // Make sure there is an actual change to make:
+    const no_changed_data = Object.keys(new_data).every(key => new_data[key as keyof UserInput] === row_input[key as keyof UserInput])
+    if (no_changed_data) {
+        console.log("NO CHANGES")
+        return
+    }
+
+    console.log("MAKING CHANGES")
     
     setLoading(true)
     setError(false)
-    const date = new Date()
     const update = JSON.stringify({
             id: row.ord_no,
-            // additional_info: textareaValue,
-            // last_updated: Date.parse(date.toUTCString()),
             updated_by: current_user?.user?.name,
             ...new_data
         })
-    const res = await fetch(`${api_url}/update_user_input_cols_by_id`,{
+    const res = await fetch(`${server_url}/update_user_input_cols_by_id`,{
         method: "PATCH",
         headers: {
                 'Content-Type': 'application/json',

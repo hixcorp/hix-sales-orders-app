@@ -60,10 +60,18 @@ const ActionButtons = () => {
     const toggleExpandAll = () => {
         store.expand_all = !store.expand_all
     }
+
+    const clearFilters = () => {
+        // store.sales_data.filtered_data.splice(0,store.sales_data.filtered_data.length)
+        Object.keys(store.hg_filter).forEach(key=>delete store.hg_filter[key])
+        store.applyFilter()
+    }
 return(                
     <>
         <div className='flex gap-1'>
-            
+            <Button className='m-0 h-8' onClick={clearFilters}>Clear Filters</Button>
+        </div>
+        <div className='flex gap-1'>
             <Button className='m-0 h-8' onClick={toggleViewMode}>{snap.table_view === 'item' ? 'Switch to Order View' : 'Switch to Item View'}</Button>
             {snap.table_view === 'order' && <Button className='m-0 h-8' onClick={toggleExpandAll}>{snap.expand_all ? 'Collapse All' : 'Expand All'}</Button>}
         </div>

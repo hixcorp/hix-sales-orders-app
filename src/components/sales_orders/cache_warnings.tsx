@@ -25,7 +25,7 @@ export const CachedDataNotice = () => {
           <h1 className=''>
               No sales data found in database. Check the network connection and try again.
           </h1>
-          <Button className='m-3' variant={'secondary'} onClick={()=>{store.fetchData()}}><RefreshCw/>Retry</Button>
+          <Button className='' variant={'secondary'} onClick={()=>{store.fetchData()}}><RefreshCw/>Retry</Button>
         </div>
           )
     }
@@ -37,14 +37,14 @@ export const CachedDataNotice = () => {
                 <h2 className='text-destructive'>
                     {`WARNING: Could not connect to Macola HIXSQL003 database. Using cached data from ${format_date(snap.sales_data.cache_date)}. Check network connection.`}
                 </h2>
-                <Button className='m-3' variant={'secondary'} onClick={()=>{store.fetchData()}}><RefreshCw/>Retry</Button>
+                <Button className='' variant={'secondary'} onClick={()=>{store.fetchData()}}><RefreshCw/>Retry</Button>
             </div>
                
             }
             {snap.sales_data.cached && (snap.sales_data.errors.length === 0) && 
-            <div className='flex items-center '>
+            <div className='flex items-center gap-1'>
               <h2>{`Using cached data from ${format_date(snap.sales_data.cache_date)}. Refresh with live data:`} </h2>
-              <Button className='m-3' variant={'secondary'} onClick={()=>{store.fetchData(false)}}><RefreshCw/></Button>
+              <Button className='h-min w-min' variant={'secondary'} onClick={()=>{store.fetchData(false)}}><RefreshCw size={20}/></Button>
               </div>
             }
             

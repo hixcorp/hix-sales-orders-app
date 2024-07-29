@@ -10,7 +10,7 @@ from settings import *
 
 Base = declarative_base()
 
-DATABASE_NAME = 'local_dbv1.db'
+DATABASE_NAME = 'local_dbv2.db'
 BASE_DIR = get_base_directory()
 LOCAL_DATABASE = normsqlitepath(os.path.join(BASE_DIR,DATABASE_NAME))
 

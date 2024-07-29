@@ -60,7 +60,6 @@ const HeadCell = ({c}:{c: string}) => {
                     <DropdownMenu>
                         <DropdownMenuTrigger>
                             <Filter className='hover:cursor-pointer flex gap-2 items-center h-[25px]' size={15} />
-                            
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             <TableFilter columnName={c}/>

@@ -2,6 +2,9 @@ import asyncio
 import base64
 from datetime import datetime
 import json
+import argparse
+import logging
+import sys
 from urllib.parse import urlencode
 from uuid import UUID, uuid4
 from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
@@ -40,15 +43,18 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000","tauri://localhost","http://localhost:8001"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
 
-
-HOST='127.0.0.1'
-PORT=3000
+DEV_HOST='127.0.0.1'
+DEV_PORT=3000
+PROD_HOST='10.1.1.128'
+PROD_PORT=8081
+HOST=DEV_HOST
+PORT=PROD_PORT
 BASE_DIR = utils.get_base_directory()
 TEMP_DIR = os.path.join(BASE_DIR,'temp')
 SESSION_TOKEN = ''
@@ -68,12 +74,19 @@ class DatabaseChangeResponse(BaseModel):
 # Pydantic models
 class UserInputBase(BaseModel):
     id: str
-    order_status: str = ''
-    additional_info: str = ''
-    action: str = ''
-    action_owner: str = ''
+    order_status: Optional[str] = ''
+    additional_info: Optional[str] = None
+    action: Optional[str] = None
+    action_owner: Optional[str] = None
     last_updated: Optional[datetime] = None
-    updated_by: str= ''
+    updated_by: Optional[str] = None
+    # id: str
+    # order_status: str = ''
+    # additional_info: str = ''
+    # action: str = ''
+    # action_owner: str = ''
+    # last_updated: Optional[datetime] = None
+    # updated_by: str= ''
 
 class UserInputCreate(UserInputBase):
     pass
@@ -118,7 +131,12 @@ async def all_items_no_cache():
 
 @app.get("/get_all_user_input", response_model=List[UserInputBase])
 async def read_all_user_inputs(db: Session = Depends(get_current_db)):
-    return db.query(UserInput).all()
+    try:
+        user_input = db.query(UserInput).all()
+        return user_input
+    except Exception as e:
+        print(e)
+        return HTTPException(status_code=500, detail={'message':'could not get data', 'error':str(e)})
 
 @app.get("/get_user_input_by_id/{id}", response_model=UserInputBase)
 async def read_user_input_by_id(id: str, db: Session = Depends(get_current_db)):
@@ -544,16 +562,24 @@ async def import_user_input(file: UploadFile = File(...), db: Session = Depends(
 
 @app.websocket("/ws/user_inputs")
 async def websocket_endpoint(websocket: WebSocket, manager: ConnectionManager=Depends(get_ws_manager), ):
+    
     try:
         await manager.connect(websocket)
         while True:
-            data = await websocket.receive_text()
-            # You can process messages here if needed
-    except WebSocketDisconnect:
-        try:
-            manager.disconnect(websocket)
-        except:
-            pass
+            try:
+                data = await websocket.receive_text()
+                # You can process messages here if needed
+            except WebSocketDisconnect:
+                try: 
+                    manager.disconnect(websocket)
+                except:
+                    break
+            except Exception as e:
+                print(f"Error in websocket communication: {e}")
+                manager.disconnect(websocket)
+                break
+    except Exception as e:
+        print(f"Failed to establish WebSocket connection: {e}")
     
 @app.on_event("startup")
 async def startup_event():
@@ -656,7 +682,8 @@ async def logout(response: Response, session_id:UUID=Depends(cookie)):
     # Invalidate the session token by setting an expired cookie or clearing the session
     try:
         await backend.delete(session_id=session_id)
-    except:
+    except Exception as e:
+        print(e)
         pass
     try:
         cookie.delete_from_response(response)
@@ -664,13 +691,58 @@ async def logout(response: Response, session_id:UUID=Depends(cookie)):
         response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out successfully"}
 
+def get_config(mode:str):
+    if mode == "PROD":
+        return PROD_HOST, PROD_PORT
+    else:
+        return DEV_HOST, DEV_PORT
+
 if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description="Run the server in DEV or PROD mode. Uses default host/port unless specified.")
+    parser.add_argument('-m', '--mode', choices=['DEV', 'PROD'], default='DEV', help="Run mode: DEV or PROD default addr/port")
+   
+    parser.add_argument('-p', '--port', help="Specify a port to host the server")
+    parser.add_argument('-a', '--addr', help="Specify an IP address to host the server")
+    args = parser.parse_args()
+    mode = args.mode
+    HOST, PORT = get_config(mode)
+
+    user_port = args.port
+    if user_port: PORT = int(user_port)
+
+    user_addr = args.addr
+    if user_addr: HOST = str(user_addr)
+
     if not os.path.exists(TEMP_DIR):
         os.makedirs(TEMP_DIR)
-    
-    print(f"Temp Directory: {TEMP_DIR}")
-    utils.clear_temp_directory(TEMP_DIR)
-    start_db()
-    # asyncio.run(startup_event())
-    uvicorn.run(app=app,host=HOST, port=PORT)
-    
+
+    # Production mode adjustments
+    if args.mode == 'PROD':
+        with open('application_output.log', 'w') as log_file, open('errors.log', 'w') as error_file:
+            sys.stdout = utils.StreamWrapper(log_file)
+            sys.stderr = utils.StreamWrapper(error_file)
+
+            try:
+                if not os.path.exists(TEMP_DIR):
+                    os.makedirs(TEMP_DIR)
+                print(f"Temp Directory: {TEMP_DIR}")
+                utils.clear_temp_directory(TEMP_DIR)
+                start_db()
+                print(f'Listening on {HOST}:{PORT}')
+
+                # Configuring Uvicorn without its own logging
+                uvicorn.run(app=app, host=HOST, port=PORT, log_config=None, timeout_keep_alive=60, timeout_graceful_shutdown=60, ws_ping_timeout=60)
+            finally:
+                # Restore original stdout and stderr
+                sys.stdout = sys.__stdout__
+                sys.stderr = sys.__stderr__pino
+    else:
+        if not os.path.exists(TEMP_DIR):
+            os.makedirs(TEMP_DIR)
+        print(f"Temp Directory: {TEMP_DIR}")
+        utils.clear_temp_directory(TEMP_DIR)
+        start_db()
+        print(f'Listening on {HOST}:{PORT}')
+        uvicorn.run(app=app, host=HOST, port=PORT)
+

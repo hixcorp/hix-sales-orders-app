@@ -107,7 +107,7 @@ const RowCell = ({row, c,show_list, onClick, total_price}:{row:Data, c:string, s
           <HoverTooltip content="Past Due"><CircleX className='text-destructive' /> </HoverTooltip>
           : <></>
       const week = due_this_week ? 
-          <HoverTooltip content="Due this week"><CircleAlert className='text-yellow-500' /></HoverTooltip>
+          <HoverTooltip content={"Due This Week"}><CircleAlert className='text-yellow-500' /></HoverTooltip>
            : <></>
       let color = due_this_week ? 'text-yellow-500' : ''
       color = past_due ? 'text-destructive' : color
@@ -124,9 +124,9 @@ const RowCell = ({row, c,show_list, onClick, total_price}:{row:Data, c:string, s
     }  
 
     
-    const extra_ui = extras.map((e:React.ReactNode)=>e)
+    const extra_ui = extras.map((e:React.ReactNode, idx)=><span key={`${c}_${row.id}_tooltip_${idx}`}>{e}</span>)
 
-    cellContent = <div className={classname}>{extra_ui}{cellContent}</div>
+    cellContent = <div className={classname} >{extra_ui}{cellContent}</div>
   
   }
 
@@ -168,7 +168,7 @@ export const getAlerts = (date:string | number | Date) => {
   return {past_due, due_this_week}
 }
 
-function formatMoney(amount: number, currency: string = 'USD', locale: string = 'en-US'): string {
+export function formatMoney(amount: number, currency: string = 'USD', locale: string = 'en-US'): string {
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currency

@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, CirclePlus, CircleX } from "lucide-react"
-
-import { api_url, cn } from "@/lib/utils"
+import { Check, ChevronsUpDown, CircleX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -19,33 +17,33 @@ import {
 } from "@/components/ui/popover"
 import { CommandList } from "cmdk"
 import { AllowedValue, AllowedValueCreate, UserInput, store } from "@/store/sales_data_store"
+import { cn } from "@/lib/utils"
+import { useSnapshot } from "valtio"
 
-
-export function ComboboxCell({field, val, handleSelect, label, addFn, removeFn}:{field: keyof UserInput, val?:string, handleSelect?:(currentValue:string)=>void, label?:string, addFn?:(option:AllowedValueCreate, update:()=>void)=>void, removeFn?:(option:AllowedValue, update:()=>void)=>void}) {
+export function ComboboxCell({
+  field, val, handleSelect, label, addFn, removeFn
+}:{
+  field: keyof UserInput, 
+  val?:string, handleSelect?:(currentValue:string)=>void, 
+  label?:string, addFn?:(option:AllowedValueCreate)=>void, 
+  removeFn?:(option:AllowedValue)=>void
+}) {
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState(val ? val : '')
-  const [options, setOptions] = React.useState<AllowedValue[]>([])
   const [searchValue, setSearchValue] = React.useState('')
+  const snap = useSnapshot(store)
+  const options = snap.allowed_values.hasOwnProperty(field) ? snap.allowed_values[field] : []
 
   if (!label) label = ''
-  
-  React.useEffect(()=>{
-    updateAllowedValues()
-  },[open])
 
-  const updateAllowedValues = () => {
-    store.getAllowedValues(field).then(res=>{
-        if (res) setOptions(res)
-    })
-  }
 
   const handleAddOption = () =>{
     const new_option: AllowedValueCreate = {type:field, value:searchValue}
-    if(!!addFn) addFn(new_option, updateAllowedValues)
+    if(!!addFn) addFn(new_option)
   }
 
   const handleRemoveOption = async (option:AllowedValue) => {
-    if(!!removeFn) removeFn(option, updateAllowedValues)
+    if(!!removeFn) removeFn(option)
   }
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -54,7 +52,7 @@ export function ComboboxCell({field, val, handleSelect, label, addFn, removeFn}:
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] justify-between"
+          className={`w-[200px] justify-between ${val ? '': 'text-muted'}`}
         >
           {val
             ? options.find((option) => String(option.value) === String(val))?.value

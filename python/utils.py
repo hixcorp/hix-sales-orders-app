@@ -5,6 +5,7 @@ import xmltodict
 import json
 from typing import Optional, Any
 import polars as pl
+
 import sqlite3
 from datetime import datetime, timedelta, timezone
 import uuid
@@ -213,6 +214,20 @@ def timenow():
     from sqlalchemy import func 
     return datetime.now()
     # return func.now().op('AT TIME ZONE')('GMT')
+
+
+class StreamWrapper:
+    def __init__(self, stream):
+        self.stream = stream
+    
+    def write(self, data):
+        self.stream.write(data)
+    
+    def flush(self):
+        self.stream.flush()
+
+    def isatty(self):
+        return False  # Return False or True based on your needs for color coding in terminal outputs
 
 if __name__ == "__main__":
     pass

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/api/dialog';
 import { appCacheDir } from '@tauri-apps/api/path';
 import { Button } from '@/components/ui/button';
-import { api_url } from '@/lib/utils';
+import { local_api_url } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from './ui/label';
 import { DatabaseZap } from 'lucide-react';
@@ -42,7 +42,7 @@ const ChangeDatabaseDirectory= () => {
         setLoading(true)
         try {
             const newDB = { new_location: newDBLocation, location_type: locationType }
-            const response = await fetch(`${api_url}/add_preferred_database`, {
+            const response = await fetch(`${local_api_url}/add_preferred_database`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',  // This specifies that the body format is JSON
@@ -73,7 +73,7 @@ const ChangeDatabaseDirectory= () => {
 
     const handleResetDatabase = async () => {
         setLoading(true)
-        const result = await fetch(`${api_url}/reset_default_database`).then(res=>res.json())
+        const result = await fetch(`${local_api_url}/reset_default_database`).then(res=>res.json())
         await get_db_info()
         await store.fetchData()
         await store.fetchSettings()
@@ -83,9 +83,9 @@ const ChangeDatabaseDirectory= () => {
     const get_db_info = async () => {
         console.log("Fetching db info")
                 try{
-                    const {local_database} = await fetch(`${api_url}/local_database`).then(res=>res.json())
-                    const {current_database} = await fetch(`${api_url}/current_database`).then(res=>res.json())
-                    const {using_default} = await fetch(`${api_url}/using_default_database`).then(res=>res.json())
+                    const {local_database} = await fetch(`${local_api_url}/local_database`).then(res=>res.json())
+                    const {current_database} = await fetch(`${local_api_url}/current_database`).then(res=>res.json())
+                    const {using_default} = await fetch(`${local_api_url}/using_default_database`).then(res=>res.json())
                     setLocalDB(local_database || '')
                     setCurrentDB(current_database || '')
                     setUsingDefault(using_default)
@@ -104,10 +104,9 @@ const ChangeDatabaseDirectory= () => {
     }
 
     const toggleDatabase = async (mode:string) => {
-        const res = await fetch(`${api_url}/use_${mode}_database`)
+        const res = await fetch(`${local_api_url}/use_${mode}_database`)
         if (!res.ok){
             const errors = await res.json()
-            console.log({res, detail: errors.detail})
             setErrors(errors.detail || 'Unknown error occured')
         }
         
