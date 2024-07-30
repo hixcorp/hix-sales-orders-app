@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # from main import DateRange
 import utils
 import polars as pl
-from db_conn import conn_str, hg_order_by_req_ship, comment_query, all_comments, all_items
+from db_conn import conn_str, hg_order_by_req_ship, comment_query, all_comments, all_items, all_inventory, cfe_inventory
 
 #'MSSQL_output.db'
 DATABASE_NAME = 'local_cache_dbv1.db'
@@ -75,8 +75,70 @@ def process_order_status(record):
     else:
         return ""
 
+def process_order_status_2(record):
+    status = record.get('status', '')
+    
+    if status == "C":
+        return "CREDIT HOLD"
+    elif status == "H":
+        return "CANCELLED"
+    elif status == "1":
+        return "Pick List NOT Printed"
+    elif status == "4":
+        return "PICK LIST"
+    else:
+        return status
+
+def get_all_inventory(use_cached:bool=True):
+    global conn_str
+    # expired, cached_date = utils.cache_expired(time_delta=0.10, db_filename=DATABASE_FILE)
+    cached_date = datetime.now()
+    # if use_cached and not expired:
+    #     cached_data = get_all_cached_items(DATABASE_FILE)
+    #     cached_data['cache_date'] = cached_date
+    #     return cached_data
+    # Execute the main query
+    try:
+        mssql = MSSQLConnector(conn_str)
+        conn_str = mssql.conn_str
+        cnx = pyodbc.connect(conn_str)
+        cursor = cnx.cursor()
+
+        # Execute the main query
+        cursor.execute(all_inventory)
+        columns = [column[0] for column in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        # Append comments to each item in the main results while fetching
+        for r in results:
+            # r['hold_status'] = process_order_status(r)
+            # r['status'] = process_order_status_2(r)
+            # r['cmt'] = ''  # Initialize the comment field with an empty string
+            for v in r:
+                if isinstance(r[v], str): r[v] = r[v].strip()
+                if isinstance(r[v], Decimal): r[v] = float(r[v])
+                if r[v] is None: r[v] = ''
+
+        # Close the connection
+        cursor.close()
+        cnx.close()
+
+        # Serialize to JSON (if needed)
+        json_results = json.dumps(results, indent=4,cls=CustomEncoder)
+        data = json.loads(json_results)        
+        df = pl.DataFrame(data)
+        # utils.store_to_sqlite(df, DATABASE_FILE)
+
+        return {"data":data, "schema": columns, "cached": False, "cache_date":cached_date}
+    except Exception as e:
+        print(e)
+        cached_data = get_all_cached_items(DATABASE_FILE)
+        cached_data['cache_date'] = cached_date
+        if not cached_data["errors"]: cached_data["errors"] = ["Could not connect to source database"]
+        return cached_data
 
 def get_all_items(use_cached:bool=True):
+    # inventory = get_all_inventory()
     global conn_str
     expired, cached_date = utils.cache_expired(time_delta=0.10, db_filename=DATABASE_FILE)
     if use_cached and not expired:
@@ -98,6 +160,7 @@ def get_all_items(use_cached:bool=True):
         # Append comments to each item in the main results while fetching
         for r in results:
             r['hold_status'] = process_order_status(r)
+            r['status'] = process_order_status_2(r)
             r['cmt'] = ''  # Initialize the comment field with an empty string
             for v in r:
                 if isinstance(r[v], str): r[v] = r[v].strip()

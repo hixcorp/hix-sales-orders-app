@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Data, store } from '@/store/sales_data_store';
 import { useSnapshot } from 'valtio';
-import { CircleAlert, CircleX } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleX } from 'lucide-react';
 import { flexRender } from '@tanstack/react-table';
 import UserInputOrder from '../user_input/user_input_order';
 import HoverTooltip from '../tooltip';
 import { UserDropdownField } from '../user_input/user_dropdown_field';
 import TrackChanges from '../user_input/track_changes';
 
-const order_fields = ["ord_no", "shipping_dt", "ord_dt", "slspsn_no",	"cus_no", "bill_to_name", "ship_to_name", "hold_fg", 
+const order_fields = ["ord_no","status", "shipping_dt", "ord_dt", "slspsn_no",	"cus_no", "bill_to_name", "ship_to_name", "hold_fg", 
                     "ord_type", 
                     "prod_cat",	"mfg_loc", "user_def_fld_3", "oe_po_no", "discount_pct", 
                     "hold_status"]
@@ -93,7 +93,7 @@ const RowCell = ({row, c,show_list, onClick, total_price}:{row:Data, c:string, s
   let cellContent: React.ReactNode = '';
 
   if (show_list.includes(String(c))|| (String(c)==='unit_price' && !!total_price)) {
-    const value = String(snap[c]);
+    let value = String(snap[c]);
     cellContent = isISODateString(value) ? formatDate(value) : value.replaceAll('>', '/n');
   
     //Extra formatting
@@ -123,6 +123,16 @@ const RowCell = ({row, c,show_list, onClick, total_price}:{row:Data, c:string, s
       classname = `${classname} font-extrabold text-sm`
     }  
 
+    if (c==='status') {
+      
+      let color = ''
+      if (value.toUpperCase() == 'PICK LIST') {
+            extras.push(<HoverTooltip content={"Confirmed - Ship when order complete"}><CircleCheck className='text-green-500' /></HoverTooltip>)
+            color = 'text-green-500'
+            value = ''
+      }
+      classname = `${classname} font-extrabold text-xs ${color}`
+    }  
     
     const extra_ui = extras.map((e:React.ReactNode, idx)=><span key={`${c}_${row.id}_tooltip_${idx}`}>{e}</span>)
 

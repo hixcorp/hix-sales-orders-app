@@ -632,7 +632,8 @@ async def auth_callback( _response:Response,code: str = Query(...), state: str =
         user_details = {
             "name": user_info.get("name"),
             "email": user_info.get("email"),
-            "image": f'data:image/jpeg;base64,{photo_data}'
+            "image": f'data:image/jpeg;base64,{photo_data}',
+            "groups": user_info.get("groups"),
         }
 
         # Set the secure HTTP-only cookie

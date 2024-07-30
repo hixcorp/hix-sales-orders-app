@@ -3,13 +3,10 @@
 use std::{thread::sleep, time::Duration};
 
 use serde_json::Value;
-use tauri::{api::process::Command, Manager, WindowEvent};
+use tauri::{api::process::Command, utils::assets::EmbeddedAssets, Context, Manager, WindowEvent, WindowUrl};
 
 fn main() {
   
-  
-  #[cfg(feature="custom-protocol")]
-  {
     let port = 8000;
     /// In production we will be using the tauri window to handle authentication
     /// We use the localhost plugin to expose the tauri window in an http context
@@ -21,119 +18,71 @@ fn main() {
     let window_url = WindowUrl::External(url);
     context.config_mut().build.dist_dir = AppUrl::Url(window_url.clone());
     println!("{}",&window_url);
+  
 
-    tauri::Builder::default()
-          .plugin(tauri_plugin_localhost::Builder::new(port).build())
-          .plugin(tauri_plugin_websocket::init())
-          .setup(move |app| {
-                let app_handle = app.handle();
-                let splash_screen_handle = app_handle.clone();
-                let splash_screen = app.get_window("splashscreen").unwrap();
-                splash_screen.set_focus().unwrap();
-                // Wait for python server to start and then show the main window:
-                tauri::async_runtime::spawn(async move {
+    let builder = tauri::Builder::default();
+
+    #[cfg(feature="custom-protocol")]
+    let builder = builder.plugin(tauri_plugin_localhost::Builder::new(port).build());
+
+    builder.plugin(tauri_plugin_websocket::init())
+        .setup(move |app| {
+            let app_handle = app.handle();
+            let splash_screen_handle = app_handle.clone();
+            let splash_screen = app.get_window("splashscreen").unwrap();
+            splash_screen.set_focus().unwrap();
+            // Wait for python server to start and then show the main window:
+            tauri::async_runtime::spawn(async move {
+            
+                #[cfg(feature="custom-protocol")]
+                let _ = async_start_python_server().await.unwrap();
                 
-                    println!("Starting the python server");
-                    let _ = async_start_python_server().await.unwrap();
+                #[cfg(not(feature="custom-protocol"))]
+                let _ = get_pids().await;
+                
+                if let Some(main_window) = app_handle.get_window("main") {
+                    main_window.eval("location.reload();").unwrap();
+                    main_window.show().unwrap();
+                    main_window.set_focus().unwrap();
+                }
+                
+                if let Some(splash_screen) = splash_screen_handle.get_window("splashscreen") {
+                    splash_screen.close().unwrap();
+                }
+
+            });
+            
+            let app_handle = app.handle();
+            let main_window = app.get_window("main").unwrap();
+            main_window.on_window_event(move |event| match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
                     
-                    if let Some(main_window) = app_handle.get_window("main") {
-                        main_window.eval("location.reload();").unwrap();
-                        main_window.show().unwrap();
-                        main_window.set_focus().unwrap();
-                    }
-                    
-                    if let Some(splash_screen) = splash_screen_handle.get_window("splashscreen") {
-                        splash_screen.close().unwrap();
-                    }
-
-                });
-                // Start the python server on startup
-                // let _pid1 = start_python_server(app.get_window("main").unwrap()).unwrap();
-
-                let app_handle = app.handle();
-                let main_window = app.get_window("main").unwrap();
-
-                main_window.on_window_event(move |event| match event {
-                    WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
+                    // Clone the handle inside the closure for use in the async context
+                    let handle = app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
                         
-                        // Clone the handle inside the closure for use in the async context
-                        let handle = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            shutdown_python_server().await;
-                            
-                            // After the server shutdown, close the window
-                            if let Some(window) = handle.get_window("main") {
-                                window.close().expect("failed to close window");
-                            }
-                        });
-                    },
-                    _ => {}
-                });
+                        #[cfg(feature="custom-protocol")]
+                        shutdown_python_server().await;
+
+                        // After the server shutdown, close the window
+                        if let Some(window) = handle.get_window("main") {
+                            window.close().expect("failed to close window");
+                        }
+                    });
+                },
+                _ => {}
+            }
+            );
 
                 Ok(())
             })
             .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
             .run(tauri::generate_context!())
+        
         .expect("error while running tauri application");
-
-    }
-
-    #[cfg(not(feature="custom-protocol"))]
-    {
-      tauri::Builder::default()
-            .plugin(tauri_plugin_websocket::init())
-            .setup(move |app| {
-                // let app_handle = app.handle();
-                // let splash_screen_handle = app_handle.clone();
-                // let splash_screen = app.get_window("splashscreen").unwrap();
-                // splash_screen.set_focus().unwrap();
-                // // Wait for python server to start and then show the main window:
-                // tauri::async_runtime::spawn(async move {
-                
-                //     println!("Starting the python server");
-                //     let _ = async_start_python_server().await.unwrap();
-                    
-                //     if let Some(main_window) = app_handle.get_window("main") {
-                //         main_window.eval("location.reload();").unwrap();
-                //         main_window.show().unwrap();
-                //         main_window.set_focus().unwrap();
-                //     }
-                    
-                //     if let Some(splash_screen) = splash_screen_handle.get_window("splashscreen") {
-                //         splash_screen.close().unwrap();
-                //     }
-
-                // });
-                
-                let app_handle = app.handle();
-                let main_window = app.get_window("main").unwrap();
-                main_window.on_window_event(move |event| match event {
-                    WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
-                        
-                        // Clone the handle inside the closure for use in the async context
-                        let handle = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            
-                            // After the server shutdown, close the window
-                            if let Some(window) = handle.get_window("main") {
-                                window.close().expect("failed to close window");
-                            }
-                        });
-                    },
-                    _ => {}
-                }
-                );
-
-                  Ok(())
-              })
-              .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
-              .run(tauri::generate_context!())
-          
-          .expect("error while running tauri application");
-        }
 }
+
 
 #[tauri::command]
 fn start_python_server() -> Result<u32,String>{
@@ -143,80 +92,24 @@ fn start_python_server() -> Result<u32,String>{
     .spawn()
     .expect("Failed to spawn sidecar");
 
-  let pid = child.pid();//.expect("Failed to get python server process id");
+  let pid = child.pid();
 
   println!("{:?}",&pid);
   Ok(pid)
 }
 
-// async fn async_start_python_server(_window: tauri::Window) -> Result<u32,String>{
-//     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
-//   let (_rx,child) = Command::new_sidecar("main")
-//     .expect("failed to create `main` python server binary command")
-//     .spawn()
-//     .expect("Failed to spawn sidecar");
-
-//   let pid = child.pid();//.expect("Failed to get python server process id");
-
-//   let client = reqwest::Client::new();
-//   let mut pid_response = Err("".to_string());
-//   while pid_response.is_err() {
-//         pid_response = client
-//             .get("http://127.0.0.1:3000/process_id")
-//             .send()
-//             .await
-//             .map_err(|e| e.to_string())
-//             .and_then(move |response| response.json::<Value>().await.map_err(|e| e.to_string()));
-
-//         if pid_response.is_err() {
-//             println!("Failed to fetch PID. Retrying...");
-//             sleep(Duration::from_secs(1)); // Adding a delay between attempts
-//         }
-//     }
-
-//   println!("{:?}",&pid);
-//   Ok(pid)
-// }
-
+#[allow(dead_code)]
 async fn async_start_python_server() -> Result<u32, String> {
     // `new_sidecar()` expects just the filename, NOT the whole path like in JavaScript
-    let (_rx, child) = Command::new_sidecar("main")
+    let (_rx, _child) = Command::new_sidecar("main")
         .expect("failed to create `main` python server binary command")
         .spawn()
         .expect("Failed to spawn sidecar");
 
-    let pid = child.pid(); // .expect("Failed to get python server process id");
+    // let pid = child.pid();
+    get_pids().await
 
-    let client = reqwest::Client::new();
-    let mut pid_response = Err("".to_string());
-
-    while pid_response.is_err() {
-        pid_response = match client
-            .get("http://127.0.0.1:3000/process_id")
-            .send()
-            .await
-        {
-            Ok(response) => match response.json::<Value>().await {
-                Ok(json) => Ok(json),
-                Err(e) => Err(e.to_string()),
-            },
-            Err(e) => Err(e.to_string()),
-        };
-
-        if pid_response.is_err() {
-            println!("Failed to fetch PID. Retrying...");
-            sleep(Duration::from_secs(1)); // Adding a delay between attempts
-        }
-    }
-
-    match pid_response {
-        Ok(pid_response_value) => println!("Received PID response: {:?}", pid_response_value),
-        Err(e) => eprintln!("Failed to fetch PID: {}", e),
-    }
-
-    Ok(pid)
 }
-
 
 #[tauri::command]
 async fn close_python_server(pid: u32) -> Result<(), String> {
@@ -247,22 +140,38 @@ async fn close_python_server(pid: u32) -> Result<(), String> {
 }
 
 async fn get_pids() -> Result<u32,String> {
-  let client = reqwest::Client::new();
-  // Fetch the PID from the Python server
-  let pid_response = client.get("http://127.0.0.1:3000/process_id")
-      .send()
-      .await
-      .map_err(|e| e.to_string())?
-      .json::<serde_json::Value>()
-      .await
-      .map_err(|e| e.to_string())?;
+    let client = reqwest::Client::new();
+    let mut pid_response: Result<u32,String> = Err("".to_string());
 
-  let pid = pid_response["pid"].as_str()
-      .ok_or("Failed to parse PID")?
-      .parse::<u32>()
-      .map_err(|e| e.to_string())?;
+    println!("PID: {:?}",&pid_response);
+    while pid_response.is_err() {
+        println!("WAITING FOR PID");
+        let pid = client
+            .get("http://127.0.0.1:3000/process_id")
+            .send()
+            .await
+            .map_err(|e| e.to_string());
+        
+        pid_response = match pid {
+            Ok(pid) => {
+                    let pid = pid.json::<Value>().await.map_err(|e| e.to_string())?;
+                    let pid = pid["pid"].as_str()
+                    .ok_or("Failed to parse PID")?
+                    .parse::<u32>()
+                    .map_err(|e| e.to_string());
+                    pid
+            },
+            Err(err) =>{
+                println!("Failed to fetch PID. Retrying...");
+                sleep(Duration::from_secs(1)); // Adding a delay between attempts
+                Err(err)
+            },
+        };
 
-  Ok(pid)
+    }
+
+    println!("PID: {:?}",&pid_response);
+    pid_response
 }
 
 

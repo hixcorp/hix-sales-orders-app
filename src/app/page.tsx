@@ -2,19 +2,6 @@
 import UserAuthForm from "@/components/forms/user-auth-form";
 import Image from "next/image";
 
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen } from '@tauri-apps/api/event';
-
-// Function to reload the page
-function reloadPage() {
-  location.reload();
-}
-
-// Listen for the "reload-page" event from Rust
-listen('reload-page', () => {
-  reloadPage();
-});
-
 export default function AuthenticationPage() {
 
   return (
