@@ -3,12 +3,12 @@ import sqlite3
 import pyodbc
 import json
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 # from main import DateRange
 import utils
 import polars as pl
-from db_conn import conn_str, hg_order_by_req_ship, comment_query, all_comments, all_items, all_inventory, cfe_inventory
+from db_conn import conn_str, all_items_, comment_query, all_comments, all_items, all_inventory, cfe_inventory
 
 #'MSSQL_output.db'
 DATABASE_NAME = 'local_cache_dbv1.db'
@@ -23,14 +23,42 @@ class MSSQLConnector():
     def __init__(self, conn_str) -> None:
         self.conn_str = conn_str                          
 
+# class CustomEncoder(json.JSONEncoder):
+#     def default(self, obj):
+#         if isinstance(obj, Decimal):
+#             return float(obj)  # Convert decimal instances to float
+#         elif isinstance(obj, datetime):
+#             return obj.isoformat()  # Convert datetime instances to ISO format string
+#         # Let the base class default method raise the TypeError
+#         return json.JSONEncoder.default(self, obj)
+    
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)  # Convert decimal instances to float
         elif isinstance(obj, datetime):
             return obj.isoformat()  # Convert datetime instances to ISO format string
+        elif isinstance(obj, date):
+            return obj.isoformat()  # Convert date instances to ISO format string
+        elif isinstance(obj, time):
+            return obj.isoformat()  # Convert time instances to ISO format string
+        elif isinstance(obj, timedelta):
+            return str(obj)  # Convert timedelta instances to string
+        elif isinstance(obj, bytes):
+            return obj.decode('utf-8')  # Convert bytes to string
+        elif isinstance(obj, str):
+            return obj.strip()  # Trim strings
+        elif isinstance(obj, bool):
+            return bool(obj)  # Convert to boolean
+        elif isinstance(obj, int):
+            return int(obj)  # Convert to integer
+        elif isinstance(obj, float):
+            return float(obj)  # Convert to float
+        elif obj is None:
+            return None  # Handle NoneType
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
+
     
 def process_order_status(record):
     """
@@ -153,7 +181,7 @@ def get_all_items(use_cached:bool=True):
         cursor = cnx.cursor()
 
         # Execute the main query
-        cursor.execute(hg_order_by_req_ship)
+        cursor.execute(all_items_)
         columns = [column[0] for column in cursor.description]
         results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -190,7 +218,8 @@ def get_all_items(use_cached:bool=True):
         # Serialize to JSON (if needed)
         json_results = json.dumps(results, indent=4,cls=CustomEncoder)
         data = json.loads(json_results)        
-        df = pl.DataFrame(data)
+        # df = pl.DataFrame(data)
+        df = pl.DataFrame(data, infer_schema_length=len(data))
         utils.store_to_sqlite(df, DATABASE_FILE)
 
         return {"data":data, "schema": columns, "cached": False, "cache_date":cached_date}
@@ -305,6 +334,8 @@ def get_filtered_items(columns:list[str], filters:dict[str: str | dict[str,str]]
     cursor.close()
     conn.close()
     return []
+
+
     
 
 

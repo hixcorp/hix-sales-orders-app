@@ -88,11 +88,27 @@ def create_sessionmaker(engine):
 def init_db(engine):
     Base.metadata.create_all(engine)
     with Session(engine) as session:
-        local_db = session.execute(select(SavedDatabase).where(SavedDatabase.path == str(engine.url))).scalar_one_or_none()
-        if not local_db:
+        # Check if an entry already exists with the name "Local Database"
+        local_db = session.execute(
+            select(SavedDatabase).where(SavedDatabase.name == "Local Database")
+        ).scalar_one_or_none()
+
+        if local_db:
+            # Update the path to match engine.url if the entry exists
+            local_db.path = str(engine.url)
+            local_db.preferred = True
+            session.add(local_db)
+            print("Existing 'Local Database' entry path updated.")
+        else:
+            # Insert a new entry if no "Local Database" entry is found
             local_db = SavedDatabase(name="Local Database", path=str(engine.url), preferred=True)
             session.add(local_db)
-            session.commit()
+            print("New 'Local Database' entry created.")
+
+        # Commit changes to save updates or new insertion
+        session.commit()
+
+        # Set the current database, assuming this function performs necessary setup
         set_current_database(session)
 
 def set_current_database(session):

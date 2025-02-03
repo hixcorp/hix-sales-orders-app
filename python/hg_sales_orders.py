@@ -5,7 +5,7 @@ from decimal import Decimal
 from datetime import datetime
 import utils
 import polars as pl
-from db_conn import conn_str, hg_order_by_req_ship
+from db_conn import conn_str, all_items_
 from mssql import MSSQLConnector, CustomEncoder
     
 def process_order_status(record):

@@ -367,15 +367,19 @@ async def export_to_csv(filters:Filters, db: Session = Depends(get_current_db)):
         
         # Convert data to dataframe and export
         import polars as pl
-        
         df_items = pl.DataFrame(item_data)
-        date_columns = [col for col in column_names if col.lower().endswith('_dt')]  # Example heuristic
+
+        # Need to format dates properly
+        date_columns = [col for col in column_names if col.lower().endswith('_dt')]  # Identify date columns
         for col in date_columns:
             if col in df_items.columns:
-                # df[col].map_elements(lambda x: datetime.fromisoformat(x))
-                formatted_date = df_items[col].map_elements(lambda x: datetime.fromisoformat(x).strftime('%Y-%m-%d'))
-                df_items = df_items.with_columns(formatted_date.alias(col))
-
+                df_items = df_items.with_columns(
+                    pl.col(col)
+                    .str.strptime(pl.Date, format="%Y-%m-%dT%H:%M:%S")  # Convert string to Date
+                    .dt.strftime("%Y-%m-%d")  # Format as YYYY-MM-DD
+                    .alias(col)  # Rename back to the original column
+                )
+    
         # Fetch and convert UserInput data
         user_input_data = fetch_user_input_data(db)
         if user_input_data:
