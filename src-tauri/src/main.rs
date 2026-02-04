@@ -75,6 +75,33 @@ fn main() {
             }
             );
 
+            let app_handle = app.handle();
+            let splash_screen = app.get_window("splashscreen").unwrap();
+            splash_screen.on_window_event(move |event| match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    
+                    // Clone the handle inside the closure for use in the async context
+                    let handle = app_handle.clone();
+                    let handle1 = app_handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        
+                        #[cfg(feature="custom-protocol")]
+                        shutdown_python_server().await;
+
+                        // After the server shutdown, close the window
+                        if let Some(window) = handle.get_window("main") {
+                            window.close().expect("failed to close window");
+                        }
+                        if let Some(window) = handle1.get_window("splashscreen") {
+                            window.close().expect("failed to close window");
+                        }
+                    });
+                },
+                _ => {}
+            }
+            );
+
                 Ok(())
             })
             .invoke_handler(tauri::generate_handler![start_python_server,shutdown_python_server,zoom_window])
